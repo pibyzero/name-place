@@ -19,6 +19,10 @@ export const useLocalState = () => {
         setLocalState(prev => ({ ...prev, roomName }))
     }, [])
 
+    const setPlayerName = useCallback((playerName: string) => {
+        setLocalState(prev => ({ ...prev, playerName }))
+    }, [])
+
     const setPlayerId = useCallback((playerId: string) => {
         setLocalState(prev => ({ ...prev, playerId }))
     }, [])
@@ -29,6 +33,7 @@ export const useLocalState = () => {
             addPeer,
             setRoomName,
             setPlayerId,
+            setPlayerName,
         }
     }
 }

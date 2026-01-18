@@ -1,4 +1,5 @@
 import Peer, { DataConnection } from "peerjs";
+import { GameState, LocalState } from "./types/game";
 
 export function getSeedPeerFromURL() {
     const hash = window.location.hash;
@@ -11,8 +12,8 @@ export function createURL(roomName: string, seedPeer: string) {
     return url
 }
 
-export function initializePeer(myPeerId: string, seedPeer: string | null, existingPeers: string[]) {
-    const peer = new Peer(myPeerId, {
+export function initializePeer(localState: LocalState, gameState: GameState, seedPeer: string | null) {
+    const peer = new Peer(localState.playerId, {
         host: 'peerjs-server.herokuapp.com',
         port: 443,
         path: '/',
@@ -31,36 +32,41 @@ export function initializePeer(myPeerId: string, seedPeer: string | null, existi
             console.log('Connecting to seed:', seedPeer);
             const conn = peer.connect(seedPeer);
             // Set up connection if not connected already
-            if (!existingPeers.includes(seedPeer)) {
-                setupConnection(conn);
+            if (!localState.peers.includes(seedPeer)) {
+                setupConnection(conn, localState, gameState);
             }
-        } else if (seedPeer === null) {
-            // i.e. if it is a host, do nothing
-            const url = `${window.location.origin}${window.location.pathname}#room/${roomName}?seed=${id}`;
         }
     });
 
 }
 
-function setupConnection(conn: DataConnection) {
+function setupConnection(conn: DataConnection, localState: LocalState, gameState: GameState) {
     console.log('[DEBUG] Setting up connection with:', conn.peer);
 
     conn.on('open', () => {
         console.log('[SUCCESS] Connection established with:', conn.peer);
 
-        // Send full CRDT state
+        // Send handshake message
         conn.send({
-            type: 'sync',
-            state: crdt.getState()
+            type: 'handshake',
+            player: { name: localState.playerName, id: localState.playerId }
         });
-        console.log('[DEBUG] Sent sync state to:', conn.peer);
+        console.log('[DEBUG] Sent handshake msg to:', conn.peer);
 
         // Send list of all known peers
         conn.send({
             type: 'peer-list',
-            peers: Array.from(knownPeers).filter(p => p !== conn.peer)
+            peers: Array.from(localState.peers).filter(p => p !== conn.peer)
         });
         console.log('[DEBUG] Sent peer list to:', conn.peer);
+
+        // Send game state
+        conn.send({
+            type: 'sync',
+            peers: gameState,
+        });
+        console.log('[DEBUG] Sent sync state to:', conn.peer);
+
     });
 
     conn.on('data', (data) => {
@@ -70,12 +76,7 @@ function setupConnection(conn: DataConnection) {
 
     conn.on('close', () => {
         console.log('[DEBUG] Connection closed with:', conn.peer);
-        connections = connections.filter(c => c !== conn);
-        updatePeerStats();
-
-        if (connections.length === 0) {
-            updateStatus('waiting', 'Waiting for peers');
-        }
+        // TODO: cleanup?
     });
 
     conn.on('error', (err) => {
@@ -90,3 +91,6 @@ function setupConnection(conn: DataConnection) {
     }
 }
 
+function handleIncomingData(data: unknown) {
+    throw new Error("Function not implemented.");
+}

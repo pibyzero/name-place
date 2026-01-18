@@ -1,43 +1,48 @@
 import { FC, useState } from 'react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
+import { LocalState } from '../../types/game'
 
 interface HomeProps {
-    onInit: (playerName: string, roomName: string) => void
+    onInit: (playerName: string) => void
+    localState: LocalState
 }
 
-// Generate a game room name.
-function generateRoomName() {
-    const adjectives = ['happy', 'sunny', 'cosmic', 'wild', 'bright', 'swift', 'noble', 'misty'];
-    const nouns = ['tiger', 'ocean', 'mountain', 'forest', 'river', 'storm', 'eagle'];
-    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const noun = nouns[Math.floor(Math.random() * nouns.length)];
-    return `${adj}-${noun}`;
-}
-
-export const Home: FC<HomeProps> = ({ onInit: onStart }) => {
+export const Home: FC<HomeProps> = ({ onInit: onStart, localState }) => {
     const [playerName, setPlayerName] = useState('')
 
     const handleStart = () => {
-        const roomName = generateRoomName();
         if (playerName.trim()) {
-            onStart(playerName.trim(), roomName)
+            onStart(playerName.trim())
         }
     }
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6">
-            <div className="max-w-md w-full space-y-8">
+            <div className="max-w-md w-full flex flex-col gap-12">
+                {/* Game Title */}
                 <div className="text-center">
                     <h1 className="text-5xl font-bold mb-2 text-coral">
                         Name Place
                     </h1>
                     <h2 className="text-3xl font-bold text-teal">
-                        Animal ...
+                        Animal Thing
                     </h2>
+                    <p className="mt-4 text-gray-600 text-sm">
+                        The classic word game with friends
+                    </p>
                 </div>
 
+                {/* Main Card */}
                 <div className="space-y-6 bg-white bg-opacity-40 rounded-xl p-8">
+                    {localState.roomName !== '' && (
+                        <div className="text-center p-3 bg-teal bg-opacity-20 rounded-lg">
+                            <p className="text-gray-700 font-medium">
+                                Joining game ID: <span className="font-bold">{localState.roomName}</span>
+                            </p>
+                        </div>
+                    )}
+
                     <Input
                         label="Enter your name"
                         type="text"
@@ -54,16 +59,29 @@ export const Home: FC<HomeProps> = ({ onInit: onStart }) => {
                         className="w-full"
                         size="large"
                     >
-                        Create a Game
+                        {localState.roomName === '' ? "Create a New Game" : "Join Game"}
                     </Button>
-                    <p>
-                        When you create a game, you'll get a link to share with your friends and once they join, you can start the game.
-                    </p>
-                    <h2 className="font-bold text-lg"> Or, </h2>
-                    <p>
-                        If you want to join a game, open a new tab with the link received from your friend.
-                    </p>
                 </div>
+
+                {/* Instructions - Outside the main card for better separation */}
+                {localState.roomName === '' && (
+                    <div className="text-center space-y-4 text-sm text-gray-600">
+                        <div className="space-y-2">
+                            <p className="font-semibold text-gray-700">How to play:</p>
+                            <p>
+                                Create a game to get a shareable link for your friends
+                            </p>
+                            <div className="flex items-center justify-center gap-2">
+                                <span className="text-gray-400">—</span>
+                                <span className="text-xs uppercase tracking-wider text-gray-500">OR</span>
+                                <span className="text-gray-400">—</span>
+                            </div>
+                            <p>
+                                Use a link from a friend to join their game
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

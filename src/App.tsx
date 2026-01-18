@@ -21,6 +21,15 @@ function startGame(playerName: string, roomName: string, actions: GameActions) {
     throw new Error('Function not implemented.')
 }
 
+// Generate a game room name.
+function generateRoomName() {
+    const adjectives = ['happy', 'sunny', 'cosmic', 'wild', 'bright', 'swift', 'noble', 'misty'];
+    const nouns = ['tiger', 'ocean', 'mountain', 'forest', 'river', 'storm', 'eagle'];
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    return `${adj}-${noun}`;
+}
+
 function App() {
     const { gameState, actions } = useGameState()
     const { localState, actions: localActions } = useLocalState()
@@ -42,6 +51,13 @@ function App() {
 
     const handleGameInit = (playerName: string, roomName: string) => {
         const uniqueId = Math.random().toString(16).substr(2, 5);
+
+        // Set room if empty
+        if (localState.roomName === '') {
+            const roomName = generateRoomName();
+            localActions.setRoomName(roomName)
+        }
+
         let peerId = `${roomName}-${uniqueId}`;
         let host: Player = {
             id: peerId,
@@ -49,12 +65,15 @@ function App() {
         };
         const mode: GameMode = 'classic'; // TODO: get from config
 
-        // Initialize peer
-        // initializePeer(peerId, null, localState.peers);
-
-        localActions.setRoomName(roomName)
+        // Set local state
+        localActions.setPlayerName(playerName)
         localActions.setPlayerId(peerId)
+
+        // Init game
         actions.initGame(host, mode);
+
+        // Initialize peer
+        initializePeer(localState, gameState, null);
     }
 
     const handleGameStart = (players: any[], mode: 'classic' | 'timer') => {
@@ -67,7 +86,7 @@ function App() {
     return (
         <div className="min-h-screen bg-cream">
             {gameState.status === 'uninitialized' && (
-                <Home onInit={handleGameInit} />
+                <Home onInit={handleGameInit} localState={localState} />
             )}
 
             {gameState.status === 'waiting-peers' && (

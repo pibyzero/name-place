@@ -38,6 +38,7 @@ export interface PlayerScore {
 export interface LocalState {
     roomName: string
     screen: GameScreen
+    playerName: string
     playerId: string
     peers: string[]
 }
