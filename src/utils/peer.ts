@@ -107,15 +107,23 @@ function initializePeer(
             console.log('[INCOMING] Data from:', conn.peer, data)
             handleIncomingData(data as PeerData, gameActions);
         })
+
+        let p = conn.peer;
+        if (!existingPeers.includes(p)) {
+            console.warn("setting up connection with seed")
+            const me = { ...player, name: player.name, id: peer.id }
+            setupConnection(conn, me, existingPeers, gameState, peer.id, gameActions);
+        }
+
     })
 
     peer.on('open', (id) => {
         console.log('Peer initialized:', id);
-        const updated = { ...player, name: player.name, id }
+        const me = { ...player, name: player.name, id }
 
-        setPlayer(updated)
-        gameActions.initGame(updated, 'classic')
-        gameActions.addPlayer(updated)
+        setPlayer(me)
+        gameActions.initGame(me, 'classic')
+        gameActions.addPlayer(me)
 
         // connect with seed if any
         if (seedPeer && seedPeer !== id) {
@@ -124,7 +132,7 @@ function initializePeer(
             // Set up connection if not connected already
             if (!existingPeers.includes(seedPeer)) {
                 console.warn("setting up connection with seed")
-                setupConnection(conn, updated, existingPeers, gameState, id, gameActions);
+                setupConnection(conn, me, existingPeers, gameState, id, gameActions);
             }
         }
     });
@@ -140,7 +148,7 @@ function setupConnection(conn: DataConnection, player: Player, existingPeers: st
         // Send handshake message
         conn.send({
             type: 'handshake',
-            player: { name: player.name, id }
+            player
         });
         console.log('[DEBUG] Sent handshake msg to:', conn.peer);
 
