@@ -5,7 +5,7 @@ export type GameMode = 'classic' | 'timer'
 export interface Player {
     id: string
     name: string
-    isHost?: boolean
+    isHost?: boolean // might not be needed with yjs
 }
 
 export interface PlayerAnswers {
@@ -36,21 +36,28 @@ export interface PlayerScore {
 
 // Local player state
 export interface LocalState {
+    player: Player
     roomName: string
     screen: GameScreen
-    playerName: string
-    playerId: string
     peers: string[]
 }
 
-type GameStatus = "uninitialized" | 'waiting-peers' | 'started' | 'ended';
+// Expanded GameStatus to represent all game states
+export type GameStatus =
+    | 'uninitialized'     // Home screen
+    | 'waiting-peers'     // Waiting for peers to join
+    | 'player-setup'      // Setting up players
+    | 'letter-selection'  // Selecting letter for the round
+    | 'playing'           // Playing the round
+    | 'review'            // Reviewing answers
+    | 'results'           // Showing round results
+    | 'ended';            // Game ended
 
 // Global game state
 export interface GameState {
     status: GameStatus
     mode: GameMode
     players: Player[]
-    currentPlayerId: string // move to local state
     currentRound: number
     selectedLetter: string
     usedLetters: string[]

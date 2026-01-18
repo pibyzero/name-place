@@ -15,7 +15,6 @@ const initialState: GameState = {
     status: 'uninitialized',
     mode: 'timer',
     players: [],
-    currentPlayerId: '',
     currentRound: 1,
     selectedLetter: '',
     usedLetters: [],

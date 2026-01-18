@@ -1,15 +1,16 @@
 import { GameActions, useGameState } from './hooks/useMultiPlayerGame'
+// import { GameActions, useGameState } from './hooks/useYjsState'
 import { Home } from './components/screens/Home'
 import { PlayerSetup } from './components/screens/PlayerSetup'
 import { LetterSelection } from './components/screens/LetterSelection'
 import { MultiPlayerGamePlay } from './components/screens/MultiPlayerGamePlay'
 import { ReviewPhase } from './components/screens/ReviewPhase'
 import { Leaderboard } from './components/screens/Leaderboard'
-import { useEffect, } from 'react'
+import { useCallback, useEffect, useState, } from 'react'
 import { useLocalState } from './hooks/useLocalState'
-import { GameScreen, Player, GameMode, ValidationVote } from './types/game'
-import { getSeedPeerFromURL, initializePeer } from './peer'
+import { Player, GameMode, } from './types/game'
 import { WaitingPeers } from './components/screens/WaitingPeers'
+import { getSeedPeerFromURL, PeerInitializer } from './utils/peer'
 
 function getRoomFromURL() {
     const hash = window.location.hash;
@@ -27,10 +28,12 @@ function generateRoomName() {
     const nouns = ['tiger', 'ocean', 'mountain', 'forest', 'river', 'storm', 'eagle'];
     const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
     const noun = nouns[Math.floor(Math.random() * nouns.length)];
-    return `${adj}-${noun}`;
+    const random = Math.random().toString(16).substr(2, 4);
+    return `${adj}-${noun}-${random}`;
 }
 
 function App() {
+    const [roomName, setRoomName] = useState(() => generateRoomName())
     const { gameState, actions } = useGameState()
     const { localState, actions: localActions } = useLocalState()
 
@@ -38,50 +41,45 @@ function App() {
         // Check for presence of peer id and roomname in the url
         let roomName = getRoomFromURL()
         if (roomName !== null) {
+            setRoomName(roomName)
             localActions.setRoomName(roomName)
-            // Now try to get peer id, if no peer id then pretty much doomed, nothing to do
-            let seedpeer = getSeedPeerFromURL()
-            if (seedpeer == null) {
-                alert!("No seed peer connected. Nothing to do.") // TODO: better error flow/display
-                return;
-            }
-            localActions.addPeer(seedpeer)
         }
     }, [])
 
-    const handleGameInit = (playerName: string, roomName: string) => {
+    const handleGameInit = useCallback((playerName: string) => {
         const uniqueId = Math.random().toString(16).substr(2, 5);
+        let peerId = `${roomName}-${uniqueId}`;
+        let seedPeer: string | null = getSeedPeerFromURL();
 
         // Set room if empty
         if (localState.roomName === '') {
-            const roomName = generateRoomName();
             localActions.setRoomName(roomName)
         }
 
-        let peerId = `${roomName}-${uniqueId}`;
         let host: Player = {
             id: peerId,
             name: playerName,
         };
-        const mode: GameMode = 'classic'; // TODO: get from config
-
-        // Set local state
-        localActions.setPlayerName(playerName)
-        localActions.setPlayerId(peerId)
+        localActions.setPlayer(host)
 
         // Init game
+        const mode: GameMode = 'classic'; // TODO: get from config
         actions.initGame(host, mode);
 
-        // Initialize peer
-        initializePeer(localState, gameState, null);
-    }
+        // initialize peer
+        let initPeer = (new PeerInitializer())
+            .withName(playerName)
+            .withId(peerId)
+            .withPlayerSetter(localActions.setPlayer);
+        initPeer.initialize(gameState, seedPeer, localState.peers)
+    }, [localState, gameState]);
 
     const handleGameStart = (players: any[], mode: 'classic' | 'timer') => {
         actions.startGame(players, mode)
         actions.proceedFromSetup()
     }
 
-    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayerId)
+    const currentPlayer = localState.player
 
     return (
         <div className="min-h-screen bg-cream">
@@ -94,11 +92,11 @@ function App() {
             )}
 
 
-            {gameState.screen === 'player-setup' && (
+            {gameState.status === 'player-setup' && (
                 <PlayerSetup onStartGame={handleGameStart} />
             )}
 
-            {gameState.screen === 'letter-selection' && (
+            {gameState.status === 'letter-selection' && (
                 <LetterSelection
                     onSelectLetter={actions.selectLetter}
                     currentRound={gameState.currentRound}
@@ -106,12 +104,12 @@ function App() {
                 />
             )}
 
-            {gameState.screen === 'playing' && gameState.roundData && (
+            {gameState.status === 'playing' && gameState.roundData && (
                 <MultiPlayerGamePlay
                     letter={gameState.selectedLetter}
                     categories={gameState.categories}
                     players={gameState.players}
-                    currentPlayerId={gameState.currentPlayerId}
+                    currentPlayerId={localState.player.id}
                     answers={gameState.roundData.answers}
                     timeRemaining={gameState.timeRemaining}
                     currentRound={gameState.currentRound}
@@ -124,10 +122,10 @@ function App() {
                 />
             )}
 
-            {gameState.screen === 'review' && gameState.roundData && (
+            {gameState.status === 'review' && gameState.roundData && (
                 <ReviewPhase
                     players={gameState.players}
-                    currentPlayerId={gameState.currentPlayerId}
+                    currentPlayerId={localState.player.id}
                     answers={gameState.roundData.answers}
                     categories={gameState.categories}
                     letter={gameState.selectedLetter}
@@ -138,7 +136,7 @@ function App() {
                 />
             )}
 
-            {gameState.screen === 'results' && gameState.roundData && (
+            {gameState.status === 'results' && gameState.roundData && (
                 <Leaderboard
                     players={gameState.players}
                     answers={gameState.roundData.answers}

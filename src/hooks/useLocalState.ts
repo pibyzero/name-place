@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
-import { LocalState } from '../types/game'
+import { LocalState, Player } from '../types/game'
 
 const localInitialState: LocalState = {
+    player: { name: '', id: '' },
     roomName: '',
     screen: 'home',
-    playerId: '', // also called peer id
     peers: [],
 }
 
@@ -19,12 +19,12 @@ export const useLocalState = () => {
         setLocalState(prev => ({ ...prev, roomName }))
     }, [])
 
-    const setPlayerName = useCallback((playerName: string) => {
-        setLocalState(prev => ({ ...prev, playerName }))
+    const setPlayer = useCallback((player: Player) => {
+        setLocalState(prev => ({ ...prev, player }))
     }, [])
 
-    const setPlayerId = useCallback((playerId: string) => {
-        setLocalState(prev => ({ ...prev, playerId }))
+    const setPlayerId = useCallback((id: string) => {
+        setLocalState(prev => ({ ...prev, player: { ...prev.player, id } }))
     }, [])
 
     return {
@@ -32,8 +32,8 @@ export const useLocalState = () => {
         actions: {
             addPeer,
             setRoomName,
+            setPlayer,
             setPlayerId,
-            setPlayerName,
         }
     }
 }
