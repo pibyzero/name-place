@@ -159,11 +159,13 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                             </h3>
 
                             {/* Matrix Table */}
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto relative">
                                 <table className="min-w-full">
                                     <thead>
                                         <tr className="border-b-2 border-gray-300">
-                                            <th className="text-left py-2 px-3 font-semibold">Player</th>
+                                            <th className="text-left py-2 px-3 font-semibold sticky left-0 z-10 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
+                                                Player
+                                            </th>
                                             {categories.map(cat => (
                                                 <th key={cat} className="text-left py-2 px-3 font-semibold text-sm">
                                                     {cat}
@@ -174,10 +176,13 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                     <tbody>
                                         {otherPlayers.map((player, idx) => {
                                             const playerAnswers = answers.get(player.id) || {}
+                                            const rowBgColor = idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'
 
                                             return (
-                                                <tr key={player.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                                                    <td className="py-3 px-3 font-medium">{player.name}</td>
+                                                <tr key={player.id} className={rowBgColor}>
+                                                    <td className={`py-3 px-3 font-medium sticky left-0 z-10 ${rowBgColor} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]`}>
+                                                        {player.name}
+                                                    </td>
                                                     {categories.map(category => {
                                                         const answer = playerAnswers[category]
                                                         const hasAnswer = answer?.trim()
