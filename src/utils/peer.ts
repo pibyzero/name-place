@@ -1,5 +1,6 @@
 import Peer, { DataConnection } from "peerjs";
 import { GameState, Player } from "../types/game";
+import { GameActions } from "../hooks/useMultiPlayerGame";
 
 export function getSeedPeerFromURL() {
     const hash = window.location.hash;
@@ -16,11 +17,13 @@ export class PeerInitializer {
     name: string
     id: string
     playerSetter: (p: Player) => void
+    gameActions: GameActions | undefined
 
     constructor() {
         this.name = ''
         this.id = ''
         this.playerSetter = (_) => { }
+        this.gameActions = undefined
     }
 
     withName(name: string) {
@@ -38,9 +41,19 @@ export class PeerInitializer {
         return this
     }
 
+    withGameActions(g: GameActions) {
+        this.gameActions = g
+        return this
+    }
+
     initialize(gameState: GameState, seedPeer: string | null, existingPeers: string[]) {
-        const player = { name: this.name, id: this.id };
-        initializePeer(player, gameState, seedPeer, this.playerSetter, existingPeers)
+        const isHost = seedPeer === null;
+        const player = { name: this.name, id: this.id, isHost };
+        if (this.gameActions === undefined) {
+            console.error("No game actions set")
+            return
+        }
+        initializePeer(player, gameState, seedPeer, this.playerSetter, existingPeers, this.gameActions)
     }
 }
 
@@ -49,7 +62,8 @@ function initializePeer(
     gameState: GameState,
     seedPeer: string | null,
     setPlayer: any,
-    existingPeers: string[]
+    existingPeers: string[],
+    gameActions: GameActions,
 ) {
     const peer = new Peer(player.id, {
         config: {
@@ -91,28 +105,33 @@ function initializePeer(
 
         conn.on('data', (data) => {
             console.log('[INCOMING] Data from:', conn.peer, data)
+            handleIncomingData(data as PeerData, gameActions);
         })
     })
 
     peer.on('open', (id) => {
         console.log('Peer initialized:', id);
-        const updated = { name: player.name, id }
-        setPlayer(updated)
+        const updated = { ...player, name: player.name, id }
 
+        setPlayer(updated)
+        gameActions.initGame(updated, 'classic')
+        gameActions.addPlayer(updated)
+
+        // connect with seed if any
         if (seedPeer && seedPeer !== id) {
             console.log('Connecting to seed:', seedPeer);
             const conn = peer.connect(seedPeer);
             // Set up connection if not connected already
             if (!existingPeers.includes(seedPeer)) {
                 console.warn("setting up connection with seed")
-                setupConnection(conn, updated, existingPeers, gameState, id);
+                setupConnection(conn, updated, existingPeers, gameState, id, gameActions);
             }
         }
     });
 
 }
 
-function setupConnection(conn: DataConnection, player: Player, existingPeers: string[], gameState: GameState, id: string) {
+function setupConnection(conn: DataConnection, player: Player, existingPeers: string[], gameState: GameState, id: string, gameActions: GameActions) {
     console.log('[DEBUG] Setting up connection with:', conn.peer);
 
     conn.on('open', () => {
@@ -144,7 +163,7 @@ function setupConnection(conn: DataConnection, player: Player, existingPeers: st
 
     conn.on('data', (data) => {
         console.log('[DEBUG] Received data from', conn.peer, ':', data.type);
-        handleIncomingData(data);
+        handleIncomingData(data, gameActions);
     });
 
     conn.on('close', () => {
@@ -164,7 +183,31 @@ function setupConnection(conn: DataConnection, player: Player, existingPeers: st
     }
 }
 
-function handleIncomingData(data: unknown) {
+interface PeerData {
+    type: 'handshake' | 'peer-list' | 'sync'
+}
+
+interface HandshakeData {
+    type: 'handshake'
+    player: Player
+}
+
+function handleIncomingData(data: PeerData, gameActions: GameActions) {
+    switch (data.type) {
+        case 'handshake':
+            const { player } = data as HandshakeData;
+            gameActions.addPlayer(player);
+            break;
+        case 'sync':
+            console.warn("SYNC")
+            break;
+
+        case 'peer-list':
+            console.warn("PEERLIST")
+            break;
+
+        default:
+            break;
+    }
     console.warn("received", { data })
-    throw new Error("Function not implemented.");
 }

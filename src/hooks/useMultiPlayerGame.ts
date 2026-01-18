@@ -13,7 +13,7 @@ import { calculateRoundScores } from '../utils/scoring'
 
 const initialState: GameState = {
     status: 'uninitialized',
-    mode: 'timer',
+    mode: 'classic',
     players: [],
     currentRound: 1,
     selectedLetter: '',
@@ -32,6 +32,7 @@ export interface GameActions {
     selectLetter: (letter: string) => {},
     setCurrentPlayer: (playerId: string) => {},
     updateAnswer: (playerId: string, category: string, answer: string) => {},
+    addPlayer: (p: Player) => {},
     stopRound: () => {},
     proceedToReview: () => {},
     submitReview: (validations: ValidationVote[]) => {},
@@ -72,11 +73,7 @@ export const useGameState = () => {
             gameState.reviewsSubmitted.size === gameState.players.length) {
             proceedToResults()
         }
-    }, [gameState.screen, gameState.reviewsSubmitted.size, gameState.players.length])
-
-    const setScreen = useCallback((screen: GameScreen) => {
-        setGameState(prev => ({ ...prev, screen }))
-    }, [])
+    }, [gameState.status, gameState.reviewsSubmitted.size, gameState.players.length])
 
     const startGame = useCallback((players: Player[], mode: GameMode) => {
         const scores = new Map<string, number>()
@@ -91,24 +88,24 @@ export const useGameState = () => {
         }))
     }, [])
 
-    const initGame = useCallback((host: Player, mode: GameMode) => {
+    const initGame = useCallback((host: Player, mode: GameMode = 'classic') => {
         if (gameState.status != 'uninitialized') {
             alert!('initGame called for uninitialized game state. aborting!') // TODO error propagation
             return
         }
-        host.isHost = true; // Ensure host
-        let players = [host];
+        // host.isHost = true; // Ensure host
+        // let players = [host];
 
-        const scores = new Map<string, number>()
-        players.forEach(p => scores.set(p.id, 0))
+        // const scores = new Map<string, number>()
+        // players.forEach(p => scores.set(p.id, 0))
 
         setGameState(prev => ({
             ...prev,
             status: 'waiting-peers',
-            players,
-            mode,
-            currentPlayerId: players[0]?.id || '',
-            scores
+            // players,
+            // mode,
+            // currentPlayerId: players[0]?.id || '',
+            // scores
         }))
 
     }, [])
@@ -155,6 +152,18 @@ export const useGameState = () => {
         setGameState(prev => ({
             ...prev,
             currentPlayerId: playerId
+        }))
+    }, [])
+
+    const addPlayer = useCallback((player: Player) => {
+        console.warn("called addplayer", { gameState, player })
+        // Do not add if already exists
+        if (gameState.players.map(x => x.id).includes(player.id)) {
+            return
+        }
+        setGameState(prev => ({
+            ...prev,
+            players: [...prev.players, player]
         }))
     }, [])
 
@@ -275,6 +284,7 @@ export const useGameState = () => {
             proceedFromSetup,
             selectLetter,
             setCurrentPlayer,
+            addPlayer,
             updateAnswer,
             stopRound,
             proceedToReview,

@@ -1,25 +1,23 @@
 import { FC, useState, useMemo } from "react";
-import { LocalState } from "../../types/game";
+import { GameState, LocalState } from "../../types/game";
 import { createURL } from "../../utils/peer";
 import { Button } from "../ui/Button";
 
 interface WaitingPeersProps {
     localState: LocalState
+    gameState: GameState
 }
 
-export const WaitingPeers: FC<WaitingPeersProps> = ({ localState }) => {
+export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState }) => {
     const [copied, setCopied] = useState(false);
 
     // Generate the URL once
     const url = useMemo(() => createURL(localState.roomName, localState.player.id), [localState]);
 
     // Dummy list of connected peers
-    const connectedPeers = [
-        "Player 1",
-        "John Doe",
-        "Alice",
-        "Bob"
-    ];
+    const connectedPeers = gameState.players.map(x => `${x.name} - ${x.id}`);
+    const me = gameState.players.filter(x => x.id == localState.player.id)[0];
+    console.warn({ me });
 
     const handleCopyUrl = async () => {
         try {
@@ -39,13 +37,16 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState }) => {
                     <h1 className="text-4xl font-bold text-coral mb-2">
                         Waiting for Players
                     </h1>
-                    <p className="text-gray-600">
+                    {me.isHost ? <p className="text-gray-600">
                         Share the link below with your friends to join the game
+                    </p> : <p className="text-gray-600">
+                        Let the host start the game once enough players join
                     </p>
+                    }
                 </div>
 
                 {/* URL Section */}
-                <div className="bg-white bg-opacity-40 rounded-xl p-6 space-y-4">
+                {me.isHost && <div className="bg-white bg-opacity-40 rounded-xl p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-gray-700">
                         Game Room URL
                     </h2>
@@ -65,27 +66,30 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState }) => {
                         </Button>
                     </div>
                 </div>
+                }
 
                 {/* Connected Peers Section */}
                 <div className="bg-white bg-opacity-40 rounded-xl p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-gray-700">
-                        Connected Peers ({connectedPeers.length})
+                        Connected Peers ({gameState.players.length})
                     </h2>
                     <div className="space-y-2">
-                        {connectedPeers.map((peer, index) => (
+                        {gameState.players.map((peer, index) => (
                             <div
                                 key={index}
                                 className="flex items-center gap-3 p-3 bg-white bg-opacity-60 rounded-lg"
                             >
                                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                <span className="text-gray-700 font-medium">{peer}</span>
+                                <span className="text-gray-700 font-medium">
+                                    {me.id == peer.id && "(You)"} {peer.name} - {peer.id}
+                                </span>
                             </div>
                         ))}
                     </div>
                 </div>
 
                 {/* Start Game Button (placeholder) */}
-                <div className="text-center">
+                {localState.player.isHost && <div className="text-center">
                     <Button
                         size="large"
                         disabled={connectedPeers.length < 2}
@@ -93,12 +97,13 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState }) => {
                     >
                         Start Game ({connectedPeers.length} players)
                     </Button>
-                    {connectedPeers.length < 2 && (
+                    {connectedPeers.length < 3 && (
                         <p className="text-sm text-gray-500 mt-2">
-                            Need at least 2 players to start
+                            Need at least 3 players to start
                         </p>
                     )}
                 </div>
+                }
             </div>
         </div>
     )

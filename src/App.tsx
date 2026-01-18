@@ -34,6 +34,7 @@ function generateRoomName() {
 
 function App() {
     const [roomName, setRoomName] = useState(() => generateRoomName())
+    const [uniqueId] = useState(() => Math.random().toString(16).substr(2, 5));
     const { gameState, actions } = useGameState()
     const { localState, actions: localActions } = useLocalState()
 
@@ -47,7 +48,6 @@ function App() {
     }, [])
 
     const handleGameInit = useCallback((playerName: string) => {
-        const uniqueId = Math.random().toString(16).substr(2, 5);
         let peerId = `${roomName}-${uniqueId}`;
         let seedPeer: string | null = getSeedPeerFromURL();
 
@@ -62,16 +62,15 @@ function App() {
         };
         localActions.setPlayer(host)
 
-        // Init game
-        const mode: GameMode = 'classic'; // TODO: get from config
-        actions.initGame(host, mode);
-
-        // initialize peer
+        // initialize peer, this can be better
         let initPeer = (new PeerInitializer())
             .withName(playerName)
             .withId(peerId)
-            .withPlayerSetter(localActions.setPlayer);
+            .withPlayerSetter(localActions.setPlayer)
+            .withGameActions(actions);
+
         initPeer.initialize(gameState, seedPeer, localState.peers)
+
     }, [localState, gameState]);
 
     const handleGameStart = (players: any[], mode: 'classic' | 'timer') => {
@@ -88,7 +87,7 @@ function App() {
             )}
 
             {gameState.status === 'waiting-peers' && (
-                <WaitingPeers localState={localState} />
+                <WaitingPeers localState={localState} gameState={gameState} />
             )}
 
 
