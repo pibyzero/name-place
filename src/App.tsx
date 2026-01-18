@@ -1,56 +1,93 @@
-import { useGameState } from './hooks/useGameState'
+import { useState } from 'react'
+import { useMultiPlayerGame } from './hooks/useMultiPlayerGame'
 import { Home } from './components/screens/Home'
+import { PlayerSetup } from './components/screens/PlayerSetup'
 import { LetterSelection } from './components/screens/LetterSelection'
-import { GamePlay } from './components/screens/GamePlay'
-import { Results } from './components/screens/Results'
+import { MultiPlayerGamePlay } from './components/screens/MultiPlayerGamePlay'
+import { ReviewPhase } from './components/screens/ReviewPhase'
+import { Leaderboard } from './components/screens/Leaderboard'
 
 function App() {
-  const { gameState, actions } = useGameState()
+    const { gameState, actions } = useMultiPlayerGame()
+    const [isSinglePlayer, setIsSinglePlayer] = useState(false)
 
-  const handleStart = (playerName: string) => {
-    actions.setPlayerName(playerName)
-    actions.setScreen('letter-selection')
-  }
+    const handleHomeStart = (playerName: string) => {
+        // For now, go to player setup for multiplayer
+        actions.setScreen('player-setup')
+    }
 
-  return (
-    <div className="min-h-screen bg-cream">
-      {gameState.screen === 'home' && (
-        <Home onStart={handleStart} />
-      )}
+    const handleGameStart = (players: any[], mode: 'classic' | 'timer') => {
+        actions.startGame(players, mode)
+        actions.proceedFromSetup()
+    }
 
-      {gameState.screen === 'letter-selection' && (
-        <LetterSelection
-          onSelectLetter={actions.selectLetter}
-          currentRound={gameState.currentRound}
-          playerName={gameState.playerName}
-        />
-      )}
+    const currentPlayer = gameState.players.find(p => p.id === gameState.currentPlayerId)
 
-      {gameState.screen === 'playing' && (
-        <GamePlay
-          letter={gameState.selectedLetter}
-          categories={gameState.categories}
-          answers={gameState.answers}
-          timeRemaining={gameState.timeRemaining}
-          currentRound={gameState.currentRound}
-          onUpdateAnswer={actions.updateAnswer}
-          onSubmit={actions.submitRound}
-        />
-      )}
+    return (
+        <div className="min-h-screen bg-cream">
+            {gameState.screen === 'home' && (
+                <Home onStart={handleHomeStart} />
+            )}
 
-      {gameState.screen === 'results' && (
-        <Results
-          letter={gameState.selectedLetter}
-          answers={gameState.answers}
-          roundScore={gameState.roundScores[gameState.roundScores.length - 1] || 0}
-          totalScore={gameState.totalScore}
-          currentRound={gameState.currentRound}
-          onNextRound={actions.nextRound}
-          onNewGame={actions.resetGame}
-        />
-      )}
-    </div>
-  )
+            {gameState.screen === 'player-setup' && (
+                <PlayerSetup onStartGame={handleGameStart} />
+            )}
+
+            {gameState.screen === 'letter-selection' && (
+                <LetterSelection
+                    onSelectLetter={actions.selectLetter}
+                    currentRound={gameState.currentRound}
+                    playerName={currentPlayer?.name || 'Player'}
+                />
+            )}
+
+            {gameState.screen === 'playing' && gameState.roundData && (
+                <MultiPlayerGamePlay
+                    letter={gameState.selectedLetter}
+                    categories={gameState.categories}
+                    players={gameState.players}
+                    currentPlayerId={gameState.currentPlayerId}
+                    answers={gameState.roundData.answers}
+                    timeRemaining={gameState.timeRemaining}
+                    currentRound={gameState.currentRound}
+                    mode={gameState.mode}
+                    roundStopped={!!gameState.roundData.stoppedBy}
+                    onSelectPlayer={actions.setCurrentPlayer}
+                    onUpdateAnswer={actions.updateAnswer}
+                    onStopRound={actions.stopRound}
+                    onSubmit={actions.proceedToReview}
+                />
+            )}
+
+            {gameState.screen === 'review' && gameState.roundData && (
+                <ReviewPhase
+                    players={gameState.players}
+                    currentPlayerId={gameState.currentPlayerId}
+                    answers={gameState.roundData.answers}
+                    categories={gameState.categories}
+                    letter={gameState.selectedLetter}
+                    currentRound={gameState.currentRound}
+                    reviewsSubmitted={gameState.reviewsSubmitted}
+                    onSelectPlayer={actions.setCurrentPlayer}
+                    onSubmitReview={actions.submitReview}
+                />
+            )}
+
+            {gameState.screen === 'results' && gameState.roundData && (
+                <Leaderboard
+                    players={gameState.players}
+                    answers={gameState.roundData.answers}
+                    validations={gameState.roundData.validations}
+                    categories={gameState.categories}
+                    letter={gameState.selectedLetter}
+                    currentRound={gameState.currentRound}
+                    totalScores={gameState.scores}
+                    onNextRound={actions.nextRound}
+                    onEndGame={actions.endGame}
+                />
+            )}
+        </div>
+    )
 }
 
 export default App
