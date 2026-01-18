@@ -33,28 +33,20 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
 
     const handleValidation = (playerId: string, category: string, isValid: boolean) => {
         const playerValidations = validations.get(playerId) || new Map()
-        playerValidations.set(category, isValid)
+        const currentValue = playerValidations.get(category)
+
+        // If clicking the same button again, unset it
+        if (currentValue === isValid) {
+            playerValidations.delete(category)
+        } else {
+            playerValidations.set(category, isValid)
+        }
+
         const newValidations = new Map(validations)
         newValidations.set(playerId, playerValidations)
         setValidations(newValidations)
     }
 
-    const toggleValidation = (playerId: string, category: string) => {
-        const playerValidations = validations.get(playerId) || new Map()
-        const currentValue = playerValidations.get(category)
-
-        // Cycle through: unset -> valid -> invalid -> unset
-        if (currentValue === undefined) {
-            handleValidation(playerId, category, true)
-        } else if (currentValue === true) {
-            handleValidation(playerId, category, false)
-        } else {
-            playerValidations.delete(category)
-            const newValidations = new Map(validations)
-            newValidations.set(playerId, playerValidations)
-            setValidations(newValidations)
-        }
-    }
 
     const handleSubmit = () => {
         const votes: ValidationVote[] = []
@@ -195,26 +187,33 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                                             <td key={category} className="py-3 px-3">
                                                                 {hasAnswer ? (
                                                                     <div className="flex flex-col gap-1">
-                                                                        <span className="text-sm">{answer}</span>
-                                                                        <button
-                                                                            onClick={() => toggleValidation(player.id, category)}
-                                                                            className={`
-                                                                                text-xs px-2 py-1 rounded transition-all
-                                                                                ${validationStatus === true
-                                                                                    ? 'bg-green-500 text-white'
-                                                                                    : validationStatus === false
-                                                                                        ? 'bg-red-500 text-white'
-                                                                                        : 'bg-gray-200 hover:bg-gray-300'
-                                                                                }
-                                                                            `}
-                                                                        >
-                                                                            {validationStatus === true
-                                                                                ? '✓ Valid'
-                                                                                : validationStatus === false
-                                                                                    ? '✗ Invalid'
-                                                                                    : 'Click to validate'
-                                                                            }
-                                                                        </button>
+                                                                        <span className="text-sm font-medium">{answer}</span>
+                                                                        <div className="flex gap-1">
+                                                                            <button
+                                                                                onClick={() => handleValidation(player.id, category, true)}
+                                                                                className={`
+                                                                                    text-xs px-2 py-1 rounded flex-1 transition-all
+                                                                                    ${validationStatus === true
+                                                                                        ? 'bg-green-500 text-white font-semibold'
+                                                                                        : 'bg-gray-200 hover:bg-green-100 text-gray-700'
+                                                                                    }
+                                                                                `}
+                                                                            >
+                                                                                ✓
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleValidation(player.id, category, false)}
+                                                                                className={`
+                                                                                    text-xs px-2 py-1 rounded flex-1 transition-all
+                                                                                    ${validationStatus === false
+                                                                                        ? 'bg-red-500 text-white font-semibold'
+                                                                                        : 'bg-gray-200 hover:bg-red-100 text-gray-700'
+                                                                                    }
+                                                                                `}
+                                                                            >
+                                                                                ✗
+                                                                            </button>
+                                                                        </div>
                                                                     </div>
                                                                 ) : (
                                                                     <span className="text-gray-400 italic text-sm">empty</span>
@@ -242,7 +241,7 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                 </Button>
                                 {!allValidated && (
                                     <p className="text-sm text-gray-500 mt-2">
-                                        Click each answer to cycle: Unset → Valid → Invalid
+                                        Click ✓ for valid or ✗ for invalid (click again to unset)
                                     </p>
                                 )}
                             </div>
