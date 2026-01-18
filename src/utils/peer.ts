@@ -1,6 +1,6 @@
 import Peer, { DataConnection } from "peerjs";
 import { GameState, Player } from "../types/game";
-import { GameActions } from "../hooks/useMultiPlayerGame";
+import { GameActions } from "../hooks/useGameState";
 
 export function getSeedPeerFromURL() {
     const hash = window.location.hash;
@@ -112,7 +112,7 @@ function initializePeer(
         if (!existingPeers.includes(p)) {
             console.warn("setting up connection with seed")
             const me = { ...player, name: player.name, id: peer.id }
-            setupConnection(conn, me, existingPeers, gameState, peer.id, gameActions);
+            setupConnection(conn, me, existingPeers, gameState, gameActions);
         }
 
     })
@@ -131,15 +131,14 @@ function initializePeer(
             const conn = peer.connect(seedPeer);
             // Set up connection if not connected already
             if (!existingPeers.includes(seedPeer)) {
-                console.warn("setting up connection with seed")
-                setupConnection(conn, me, existingPeers, gameState, id, gameActions);
+                setupConnection(conn, me, existingPeers, gameState, gameActions);
             }
         }
     });
 
 }
 
-function setupConnection(conn: DataConnection, player: Player, existingPeers: string[], gameState: GameState, id: string, gameActions: GameActions) {
+function setupConnection(conn: DataConnection, player: Player, existingPeers: string[], gameState: GameState, gameActions: GameActions) {
     console.log('[DEBUG] Setting up connection with:', conn.peer);
 
     conn.on('open', () => {
