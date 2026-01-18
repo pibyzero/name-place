@@ -12,11 +12,11 @@ export const Button: FC<ButtonProps> = ({
   className = '',
   ...props
 }) => {
-  const baseClasses = 'font-semibold rounded-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed'
+  const baseClasses = 'font-semibold rounded-lg transition-all duration-200 hover:scale-102 disabled:opacity-50 disabled:cursor-not-allowed border'
 
   const variantClasses = {
-    primary: 'bg-coral text-white hover:bg-opacity-90 shadow-md',
-    secondary: 'bg-teal text-white hover:bg-opacity-90 shadow-md'
+    primary: 'bg-coral text-white hover:bg-opacity-90 border-coral',
+    secondary: 'bg-teal text-white hover:bg-opacity-90 border-teal'
   }
 
   const sizeClasses = {

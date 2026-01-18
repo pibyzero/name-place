@@ -44,22 +44,22 @@ export const MultiPlayerGamePlay: FC<MultiPlayerGamePlayProps> = ({
     const someoneStoppedRound = roundStopped
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-8">
-            <div className="max-w-4xl w-full space-y-6">
+        <div className="min-h-screen p-4 md:p-6">
+            <div className="max-w-4xl mx-auto space-y-8">
                 {/* Round Info Header */}
-                <div className="text-center bg-white rounded-2xl shadow-xl p-6">
-                    <p className="text-lg text-gray-600 mb-2">Round {currentRound}</p>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <span className="text-lg font-semibold">Letter:</span>
-                            <span className="text-4xl font-bold text-coral ml-4">{letter}</span>
+                <div className="text-center">
+                    <p className="text-sm text-gray-600 uppercase tracking-wide mb-1">Round {currentRound}</p>
+                    <div className="flex items-center justify-center gap-8 mb-4">
+                        <div className="flex items-center gap-3">
+                            <span className="text-lg font-medium">Letter:</span>
+                            <span className="text-4xl font-bold text-coral">{letter}</span>
                         </div>
                         {mode === 'timer' ? (
                             <Timer seconds={timeRemaining} />
                         ) : (
                             <div className="text-lg font-medium">
                                 {someoneStoppedRound ? (
-                                    <span className="text-red-500">Round Stopped!</span>
+                                    <span className="text-red-500 font-bold">Round Stopped!</span>
                                 ) : (
                                     <span className="text-gray-600">Classic Mode</span>
                                 )}
@@ -69,8 +69,8 @@ export const MultiPlayerGamePlay: FC<MultiPlayerGamePlayProps> = ({
                 </div>
 
                 {/* Player Tabs */}
-                <div className="bg-white rounded-2xl shadow-xl p-6">
-                    <h3 className="text-lg font-semibold mb-3">Playing as:</h3>
+                <div className="border-b border-gray-300 pb-4">
+                    <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Playing as</h3>
                     <PlayerTabs
                         players={players}
                         currentPlayerId={currentPlayerId}
@@ -79,9 +79,9 @@ export const MultiPlayerGamePlay: FC<MultiPlayerGamePlayProps> = ({
                 </div>
 
                 {/* Answer Input Form */}
-                <div className="bg-white rounded-2xl shadow-xl p-8 space-y-4">
-                    <h3 className="text-xl font-bold mb-4">
-                        {currentPlayer?.name}'s Answers:
+                <div className="space-y-4">
+                    <h3 className="text-xl font-bold">
+                        {currentPlayer?.name}'s Answers
                     </h3>
 
                     {categories.map((category) => (
@@ -134,7 +134,7 @@ export const MultiPlayerGamePlay: FC<MultiPlayerGamePlayProps> = ({
                 )}
 
                 {/* Instructions */}
-                <div className="text-center text-sm text-gray-500">
+                <div className="text-center text-sm text-gray-600 mt-6">
                     <p>Switch between players using the tabs above to fill in everyone's answers</p>
                     {mode === 'classic' && (
                         <p className="mt-1">First player to click Stop ends the round for everyone!</p>

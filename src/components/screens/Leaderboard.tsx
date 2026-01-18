@@ -49,26 +49,26 @@ export const Leaderboard: FC<LeaderboardProps> = ({
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-8">
-            <div className="max-w-4xl w-full space-y-6">
+        <div className="min-h-screen p-4 md:p-6">
+            <div className="max-w-4xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="text-center">
                     <h2 className="text-3xl font-bold mb-2">Round {currentRound} Results</h2>
-                    <p className="text-lg text-gray-600">
+                    <p className="text-lg text-gray-700">
                         Letter: <span className="font-bold text-coral">{letter}</span>
                     </p>
                 </div>
 
                 {/* Detailed Scores */}
-                <div className="bg-white rounded-2xl shadow-xl p-8">
-                    <h3 className="text-xl font-bold mb-6">Round Scores:</h3>
+                <div>
+                    <h3 className="text-xl font-bold mb-6">Round Scores</h3>
 
                     {playerScores.map((playerScore, index) => {
                         const player = players.find(p => p.id === playerScore.playerId)
                         const playerAnswers = answers.get(playerScore.playerId) || {}
 
                         return (
-                            <div key={playerScore.playerId} className="mb-6 p-4 bg-cream rounded-lg">
+                            <div key={playerScore.playerId} className="mb-6 p-4 bg-white bg-opacity-40 rounded-lg">
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center">
                                         <span className="text-2xl mr-3">{getMedal(index)}</span>
@@ -118,15 +118,15 @@ export const Leaderboard: FC<LeaderboardProps> = ({
                 </div>
 
                 {/* Overall Standings */}
-                <div className="bg-white rounded-2xl shadow-xl p-6">
-                    <h3 className="text-lg font-bold mb-3">Overall Standings:</h3>
-                    <div className="flex flex-wrap justify-center gap-4">
+                <div className="border-t border-gray-300 pt-6">
+                    <h3 className="text-lg font-bold mb-4">Overall Standings</h3>
+                    <div className="flex flex-wrap justify-center gap-6">
                         {playerScores
                             .sort((a, b) => b.totalScore - a.totalScore)
                             .map((playerScore, index) => {
                                 const player = players.find(p => p.id === playerScore.playerId)
                                 return (
-                                    <div key={playerScore.playerId} className="text-center">
+                                    <div key={playerScore.playerId} className="text-center bg-white bg-opacity-40 px-6 py-3 rounded-lg">
                                         <div className="font-semibold">{player?.name}</div>
                                         <div className="text-2xl font-bold text-teal">
                                             {playerScore.totalScore} pts

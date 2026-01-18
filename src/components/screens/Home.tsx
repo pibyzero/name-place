@@ -16,8 +16,8 @@ export const Home: FC<HomeProps> = ({ onStart }) => {
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-8">
-            <div className="max-w-md w-full space-y-8 bg-white rounded-2xl shadow-xl p-8">
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6">
+            <div className="max-w-md w-full space-y-8">
                 <div className="text-center">
                     <h1 className="text-5xl font-bold mb-2 text-coral">
                         Name Place
@@ -27,7 +27,7 @@ export const Home: FC<HomeProps> = ({ onStart }) => {
                     </h2>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-6 bg-white bg-opacity-40 rounded-xl p-8">
                     <Input
                         label="Enter your name"
                         type="text"

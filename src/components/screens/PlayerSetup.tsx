@@ -36,17 +36,17 @@ export const PlayerSetup: FC<PlayerSetupProps> = ({ onStartGame }) => {
     const canStartGame = players.length >= 2
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-8">
-            <div className="max-w-2xl w-full space-y-6">
+        <div className="min-h-screen p-4 md:p-6 flex flex-col items-center justify-center">
+            <div className="max-w-2xl w-full space-y-8">
                 <div className="text-center">
                     <h1 className="text-4xl font-bold mb-2">
                         <span className="text-coral">Name Place</span>{' '}
                         <span className="text-teal">Animal ...</span>
                     </h1>
-                    <p className="text-lg text-gray-600">Add 2-8 players to start</p>
+                    <p className="text-lg text-gray-700">Add 2-8 players to start</p>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
+                <div className="space-y-6">
                     {/* Game Mode Selection */}
                     <div>
                         <h3 className="text-lg font-semibold mb-3">Game Mode</h3>
@@ -75,7 +75,7 @@ export const PlayerSetup: FC<PlayerSetupProps> = ({ onStartGame }) => {
                     </div>
 
                     {/* Players List */}
-                    <div>
+                    <div className="border-t border-gray-300 pt-6">
                         <h3 className="text-lg font-semibold mb-3">
                             Players ({players.length}/8)
                         </h3>
@@ -83,21 +83,21 @@ export const PlayerSetup: FC<PlayerSetupProps> = ({ onStartGame }) => {
                             {players.map((player, index) => (
                                 <div
                                     key={player.id}
-                                    className="flex items-center justify-between p-3 bg-cream rounded-lg"
+                                    className="flex items-center justify-between p-3 bg-white bg-opacity-40 rounded-lg"
                                 >
                                     <div className="flex items-center">
                                         <span className="font-medium">
                                             Player {index + 1}: {player.name}
                                         </span>
                                         {player.isHost && (
-                                            <span className="ml-2 text-xs bg-coral text-white px-2 py-1 rounded">
+                                            <span className="ml-2 text-xs bg-coral text-white px-2 py-1 rounded-full">
                                                 Host
                                             </span>
                                         )}
                                     </div>
                                     <button
                                         onClick={() => removePlayer(player.id)}
-                                        className="text-red-500 hover:text-red-700"
+                                        className="text-red-500 hover:text-red-700 font-medium"
                                     >
                                         Remove
                                     </button>

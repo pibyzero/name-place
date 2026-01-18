@@ -17,7 +17,7 @@ export const Input: FC<InputProps> = ({
         </label>
       )}
       <input
-        className={`w-full px-4 py-2 rounded-lg border-2 border-gray-200 focus:border-coral focus:outline-none transition-colors ${className}`}
+        className={`w-full px-4 py-2 rounded-lg border border-gray-300 bg-white bg-opacity-80 focus:border-coral focus:bg-white focus:outline-none transition-all ${className}`}
         {...props}
       />
     </div>
