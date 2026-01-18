@@ -1,19 +1,60 @@
-import { useState } from 'react'
-import { useMultiPlayerGame } from './hooks/useMultiPlayerGame'
+import { GameActions, useGameState } from './hooks/useMultiPlayerGame'
 import { Home } from './components/screens/Home'
 import { PlayerSetup } from './components/screens/PlayerSetup'
 import { LetterSelection } from './components/screens/LetterSelection'
 import { MultiPlayerGamePlay } from './components/screens/MultiPlayerGamePlay'
 import { ReviewPhase } from './components/screens/ReviewPhase'
 import { Leaderboard } from './components/screens/Leaderboard'
+import { useEffect, } from 'react'
+import { useLocalState } from './hooks/useLocalState'
+import { GameScreen, Player, GameMode, ValidationVote } from './types/game'
+import { getSeedPeerFromURL, initializePeer } from './peer'
+import { WaitingPeers } from './components/screens/WaitingPeers'
+
+function getRoomFromURL() {
+    const hash = window.location.hash;
+    const match = hash.match(/#room\/([^?]+)/);
+    return match ? match[1] : null;
+}
+
+function startGame(playerName: string, roomName: string, actions: GameActions) {
+    throw new Error('Function not implemented.')
+}
 
 function App() {
-    const { gameState, actions } = useMultiPlayerGame()
-    const [isSinglePlayer, setIsSinglePlayer] = useState(false)
+    const { gameState, actions } = useGameState()
+    const { localState, actions: localActions } = useLocalState()
 
-    const handleHomeStart = (playerName: string) => {
-        // For now, go to player setup for multiplayer
-        actions.setScreen('player-setup')
+    useEffect(() => {
+        // Check for presence of peer id and roomname in the url
+        let roomName = getRoomFromURL()
+        if (roomName !== null) {
+            localActions.setRoomName(roomName)
+            // Now try to get peer id, if no peer id then pretty much doomed, nothing to do
+            let seedpeer = getSeedPeerFromURL()
+            if (seedpeer == null) {
+                alert!("No seed peer connected. Nothing to do.") // TODO: better error flow/display
+                return;
+            }
+            localActions.addPeer(seedpeer)
+        }
+    }, [])
+
+    const handleGameInit = (playerName: string, roomName: string) => {
+        const uniqueId = Math.random().toString(16).substr(2, 5);
+        let peerId = `${roomName}-${uniqueId}`;
+        let host: Player = {
+            id: peerId,
+            name: playerName,
+        };
+        const mode: GameMode = 'classic'; // TODO: get from config
+
+        // Initialize peer
+        // initializePeer(peerId, null, localState.peers);
+
+        localActions.setRoomName(roomName)
+        localActions.setPlayerId(peerId)
+        actions.initGame(host, mode);
     }
 
     const handleGameStart = (players: any[], mode: 'classic' | 'timer') => {
@@ -25,9 +66,14 @@ function App() {
 
     return (
         <div className="min-h-screen bg-cream">
-            {gameState.screen === 'home' && (
-                <Home onStart={handleHomeStart} />
+            {gameState.status === 'uninitialized' && (
+                <Home onInit={handleGameInit} />
             )}
+
+            {gameState.status === 'waiting-peers' && (
+                <WaitingPeers localState={localState} />
+            )}
+
 
             {gameState.screen === 'player-setup' && (
                 <PlayerSetup onStartGame={handleGameStart} />
@@ -91,3 +137,4 @@ function App() {
 }
 
 export default App
+

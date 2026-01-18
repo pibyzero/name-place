@@ -34,13 +34,25 @@ export interface PlayerScore {
     totalScore: number
 }
 
-export interface GameState {
+// Local player state
+export interface LocalState {
+    roomName: string
     screen: GameScreen
+    playerId: string
+    peers: string[]
+}
+
+type GameStatus = "uninitialized" | 'waiting-peers' | 'started' | 'ended';
+
+// Global game state
+export interface GameState {
+    status: GameStatus
     mode: GameMode
     players: Player[]
-    currentPlayerId: string
+    currentPlayerId: string // move to local state
     currentRound: number
     selectedLetter: string
+    usedLetters: string[]
     categories: string[]
     roundData: RoundData | null
     timeRemaining: number

@@ -3,15 +3,25 @@ import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 
 interface HomeProps {
-    onStart: (playerName: string) => void
+    onInit: (playerName: string, roomName: string) => void
 }
 
-export const Home: FC<HomeProps> = ({ onStart }) => {
+// Generate a game room name.
+function generateRoomName() {
+    const adjectives = ['happy', 'sunny', 'cosmic', 'wild', 'bright', 'swift', 'noble', 'misty'];
+    const nouns = ['tiger', 'ocean', 'mountain', 'forest', 'river', 'storm', 'eagle'];
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    return `${adj}-${noun}`;
+}
+
+export const Home: FC<HomeProps> = ({ onInit: onStart }) => {
     const [playerName, setPlayerName] = useState('')
 
     const handleStart = () => {
+        const roomName = generateRoomName();
         if (playerName.trim()) {
-            onStart(playerName.trim())
+            onStart(playerName.trim(), roomName)
         }
     }
 
@@ -44,8 +54,15 @@ export const Home: FC<HomeProps> = ({ onStart }) => {
                         className="w-full"
                         size="large"
                     >
-                        Start Game
+                        Create a Game
                     </Button>
+                    <p>
+                        When you create a game, you'll get a link to share with your friends and once they join, you can start the game.
+                    </p>
+                    <h2 className="font-bold text-lg"> Or, </h2>
+                    <p>
+                        If you want to join a game, open a new tab with the link received from your friend.
+                    </p>
                 </div>
             </div>
         </div>

@@ -12,12 +12,13 @@ import { DEFAULT_CATEGORIES, TIMER_DURATION } from '../utils/constants'
 import { calculateRoundScores } from '../utils/scoring'
 
 const initialState: GameState = {
-    screen: 'home',
+    status: 'uninitialized',
     mode: 'timer',
     players: [],
     currentPlayerId: '',
     currentRound: 1,
     selectedLetter: '',
+    usedLetters: [],
     categories: DEFAULT_CATEGORIES,
     roundData: null,
     timeRemaining: TIMER_DURATION,
@@ -25,7 +26,23 @@ const initialState: GameState = {
     reviewsSubmitted: new Set()
 }
 
-export const useMultiPlayerGame = () => {
+export interface GameActions {
+    initGame: (host: Player, mode: GameMode) => {}
+    startGame: (players: Player[], mode: GameMode) => {}
+    proceedFromSetup: () => {},
+    selectLetter: (letter: string) => {},
+    setCurrentPlayer: (playerId: string) => {},
+    updateAnswer: (playerId: string, category: string, answer: string) => {},
+    stopRound: () => {},
+    proceedToReview: () => {},
+    submitReview: (validations: ValidationVote[]) => {},
+    proceedToResults: () => {},
+    nextRound: () => {},
+    resetGame: () => {},
+    endGame: () => {}
+}
+
+export const useGameState = () => {
     const [gameState, setGameState] = useState<GameState>(initialState)
     const [isTimerActive, setIsTimerActive] = useState(false)
 
@@ -68,12 +85,33 @@ export const useMultiPlayerGame = () => {
 
         setGameState(prev => ({
             ...prev,
-            screen: 'player-setup',
             players,
             mode,
             currentPlayerId: players[0]?.id || '',
             scores
         }))
+    }, [])
+
+    const initGame = useCallback((host: Player, mode: GameMode) => {
+        if (gameState.status != 'uninitialized') {
+            alert!('initGame called for uninitialized game state. aborting!') // TODO error propagation
+            return
+        }
+        host.isHost = true; // Ensure host
+        let players = [host];
+
+        const scores = new Map<string, number>()
+        players.forEach(p => scores.set(p.id, 0))
+
+        setGameState(prev => ({
+            ...prev,
+            status: 'waiting-peers',
+            players,
+            mode,
+            currentPlayerId: players[0]?.id || '',
+            scores
+        }))
+
     }, [])
 
     const proceedFromSetup = useCallback(() => {
@@ -233,7 +271,7 @@ export const useMultiPlayerGame = () => {
     return {
         gameState,
         actions: {
-            setScreen,
+            initGame,
             startGame,
             proceedFromSetup,
             selectLetter,
@@ -246,6 +284,6 @@ export const useMultiPlayerGame = () => {
             nextRound,
             resetGame,
             endGame
-        }
+        } as GameActions
     }
 }
