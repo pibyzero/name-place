@@ -10,6 +10,7 @@ import { useLocalState } from './hooks/useLocalState'
 import { WaitingPeers } from './components/screens/WaitingPeers'
 import { getSeedPeerFromURL } from './utils/peer'
 import { useP2P } from './hooks/useP2p'
+import { Player } from './types/game'
 
 function getRoomFromURL() {
     const hash = window.location.hash;
@@ -28,35 +29,35 @@ function generateRoomName() {
 }
 
 function App() {
-    const [roomName, setRoomName] = useState<string | undefined>();
     const { gameState, actions } = useGameState()
     const { localState, actions: localActions } = useLocalState()
-    const p2p = useP2P();
-
-    useEffect(() => {
-        let room = getRoomFromURL();
-        setRoomName(room);
-    }, [])
+    const p2p = useP2P({
+        onPlayerJoined: (_: Player) => { },
+        onGameAction: (_: any) => { }
+    });
 
     const onInit = useCallback((name: string) => {
         if (p2p.isInitialized) return;
         let seedPeer = getSeedPeerFromURL();
         let roomName = generateRoomName();
-        setRoomName(roomName)
         const id = `${roomName}-${Math.random().toString(16).substr(2, 5)}`;
-        p2p.initialize(id, name, seedPeer)
-        // Now that we've initialized, set the gamestate to be wating-peers
+        p2p.initialize(roomName, id, name, seedPeer)
+    }, [])
+
+    useEffect(() => {
+        if (!p2p.isInitialized || gameState.status != 'uninitialized') return
+        actions.addPlayer(p2p.state.player)
         actions.setWaitingPeers()
     }, [p2p.isInitialized])
 
     return (
         <div className="min-h-screen bg-cream">
-            {gameState.status === 'uninitialized' && (
-                <Home onInit={onInit} roomName={roomName} />
+            {gameState.status === 'uninitialized' && p2p.state && (
+                <Home onInit={onInit} roomName={p2p.state.roomName} />
             )}
 
-            {gameState.status === 'waiting-peers' && (
-                <WaitingPeers localState={localState} gameState={gameState} />
+            {gameState.status === 'waiting-peers' && p2p.state.player && (
+                <WaitingPeers localState={p2p.state} gameState={gameState} />
             )}
 
 

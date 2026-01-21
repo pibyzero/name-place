@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Player } from "../types/game"
+import { LocalState, Player } from "../types/game"
 import Peer, { DataConnection } from "peerjs";
 
 const USE_PROD = false;
@@ -51,6 +51,7 @@ interface P2PPlayer extends Player {
 export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
     const [player, setPlayer] = useState<P2PPlayer | undefined>();
     const [peers, setPeers] = useState<Record<string, PeerInfo>>({});
+    const [roomName, setRoomName] = useState<string>();
 
     // Use refs to always have latest values in callbacks
     const playerRef = useRef(player);
@@ -90,7 +91,7 @@ export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
 
     const isInitialized = useMemo(() => player !== undefined, [player])
 
-    const initialize = useCallback((id: string, name: string, seedPeer: string | undefined) => {
+    const initialize = useCallback((roomName: string, id: string, name: string, seedPeer: string | undefined) => {
         if (isInitialized) {
             return
         }
@@ -103,14 +104,19 @@ export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
                 isHost: seedPeer === undefined,
                 peer,
             }
-            setPlayer(player)
             if (seedPeer !== undefined) {
                 createConnection(seedPeer)
             }
+            setPlayer(player)
+            setRoomName(roomName)
         });
     }, [isInitialized])
 
     return {
+        state: {
+            player: player ? { id: player.id, name: player.name, isHost: player.isHost } : undefined,
+            roomName,
+        } as LocalState,
         isInitialized,
         initialize,
     }
@@ -154,10 +160,13 @@ const prodConfig = {
     debug: 2,
 };
 
+const localhost = '192.168.1.69';
+// const localhost = 'localhost';
+
 const localConfig = {
-    host: 'localhost',  // Your local signaling server
-    port: 9000,          // Port from step 1
-    path: '/',           // Default path
+    host: localhost,
+    port: 9000,
+    path: '/',
     config: {
         iceServers: []   // Empty! No STUN/TURN for local connections
     },
