@@ -51,6 +51,7 @@ interface P2PPlayer extends Player {
 export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
     const [player, setPlayer] = useState<P2PPlayer | undefined>();
     const [peers, setPeers] = useState<Record<string, PeerInfo>>({});
+    const [host, setHost] = useState<string>();
     const [roomName, setRoomName] = useState<string>();
 
     // Use refs to always have latest values in callbacks
@@ -63,17 +64,24 @@ export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
     }, [player, peers]);
 
     const createConnection = useCallback((targetPeer: string) => {
+        console.warn(peers, targetPeer, peers[targetPeer])
         if (peers[targetPeer] !== undefined) return;
+        console.warn("still in creat onn")
         const currentPeer = playerRef.current?.peer;
+        console.warn("current peer", currentPeer)
         if (!currentPeer || peersRef.current[targetPeer] !== undefined) return;
+        console.warn("still in creat onn")
         let conn = currentPeer.connect(targetPeer);
+        console.warn("setting up conn")
         setupConnection(conn, handleMessage);
         let peerInfo: PeerInfo = {
             id: targetPeer,
             conn,
             totalActionsConsumed: 0
         }
+        console.warn("setting up peers")
         setPeers(prev => ({ ...prev, [targetPeer]: peerInfo }));
+        console.warn("creating connection done")
     }, [peers]);
 
     const handleMessage = useCallback(getMessageHandler({
@@ -105,20 +113,49 @@ export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
                 peer,
             }
             if (seedPeer !== undefined) {
-                createConnection(seedPeer)
+                console.log("creating connection with host")
+                // createConnection(seedPeer)
+                setHost(seedPeer)
+            } else {
+                setHost(id)
             }
             setPlayer(player)
             setRoomName(roomName)
         });
     }, [isInitialized])
 
+    const me: Player | undefined = player ? { id: player.id, name: player.name, isHost: player.isHost } : undefined;
+    // join handshake to host if not host
+    const doJoinHandshake = useCallback(() => {
+        if (!isInitialized || !me) {
+            console.warn("Trying join handshake when not initialized. aborted")
+            return
+        } else if (player && player.isHost) {
+            console.warn("Attempt to handshake with oneself. aborted.")
+            return
+        };
+        if (!host || !peers[host]?.conn) {
+            console.warn("Attempt to join handshake with undefined host. aborted.")
+            return
+        }
+        let hostConn = peers[host].conn
+        hostConn.send({ type: 'join-handshake', data: me })
+    }, [host, peers])
+
     return {
         state: {
-            player: player ? { id: player.id, name: player.name, isHost: player.isHost } : undefined,
+            player: me,
+            host: host,
             roomName,
         } as LocalState,
+        actions: {
+            doJoinHandshake
+        },
         isInitialized,
+        isHost: player?.isHost,
         initialize,
+        setRoomName,
+        createConnection,
     }
 }
 

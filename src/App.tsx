@@ -5,12 +5,11 @@ import { LetterSelection } from './components/screens/LetterSelection'
 import { MultiPlayerGamePlay } from './components/screens/MultiPlayerGamePlay'
 import { ReviewPhase } from './components/screens/ReviewPhase'
 import { Leaderboard } from './components/screens/Leaderboard'
-import { useCallback, useEffect, useState, } from 'react'
+import { useCallback, useEffect, } from 'react'
 import { useLocalState } from './hooks/useLocalState'
 import { WaitingPeers } from './components/screens/WaitingPeers'
 import { getSeedPeerFromURL } from './utils/peer'
 import { useP2P } from './hooks/useP2p'
-import { Player } from './types/game'
 
 function getRoomFromURL() {
     const hash = window.location.hash;
@@ -32,22 +31,34 @@ function App() {
     const { gameState, actions } = useGameState()
     const { localState, actions: localActions } = useLocalState()
     const p2p = useP2P({
-        onPlayerJoined: (_: Player) => { },
+        onPlayerJoined: actions.addPlayer,
         onGameAction: (_: any) => { }
     });
+
+    useEffect(() => {
+        let roomName = getRoomFromURL()
+        if (roomName !== undefined) {
+            p2p.setRoomName(roomName)
+        }
+    })
 
     const onInit = useCallback((name: string) => {
         if (p2p.isInitialized) return;
         let seedPeer = getSeedPeerFromURL();
-        let roomName = generateRoomName();
+        let roomName = p2p.state.roomName || generateRoomName();
         const id = `${roomName}-${Math.random().toString(16).substr(2, 5)}`;
         p2p.initialize(roomName, id, name, seedPeer)
     }, [])
 
     useEffect(() => {
         if (!p2p.isInitialized || gameState.status != 'uninitialized') return
+        p2p.createConnection(p2p.state.host)
         actions.addPlayer(p2p.state.player)
         actions.setWaitingPeers()
+        if (!p2p.isHost) {
+            console.log("trying join handshake")
+            p2p.actions.doJoinHandshake()
+        }
     }, [p2p.isInitialized])
 
     return (
