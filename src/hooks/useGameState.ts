@@ -25,7 +25,7 @@ const initialState: GameState = {
 }
 
 export interface GameActions {
-    initGame: (host: Player, mode: GameMode) => {}
+    setWaitingPeers: () => {}
     startGame: (players: Player[], mode: GameMode) => {}
     proceedFromSetup: () => {},
     selectLetter: (letter: string) => {},
@@ -101,7 +101,7 @@ export const useGameState = () => {
         }))
     }, [])
 
-    const initGame = useCallback((host: Player, mode: GameMode = 'classic') => {
+    const setWaitingPeers = useCallback(() => {
         if (gameState.status != 'uninitialized') {
             alert!('initGame called for uninitialized game state. aborting!') // TODO error propagation
             return
@@ -283,7 +283,7 @@ export const useGameState = () => {
     return {
         gameState,
         actions: {
-            initGame,
+            setWaitingPeers,
             startGame,
             proceedFromSetup,
             selectLetter,

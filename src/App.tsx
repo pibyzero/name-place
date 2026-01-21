@@ -1,4 +1,4 @@
-import { GameActions, useGameState } from './hooks/useGameState'
+import { useGameState } from './hooks/useGameState'
 import { Home } from './components/screens/Home'
 import { PlayerSetup } from './components/screens/PlayerSetup'
 import { LetterSelection } from './components/screens/LetterSelection'
@@ -7,19 +7,14 @@ import { ReviewPhase } from './components/screens/ReviewPhase'
 import { Leaderboard } from './components/screens/Leaderboard'
 import { useCallback, useEffect, useState, } from 'react'
 import { useLocalState } from './hooks/useLocalState'
-import { Player } from './types/game'
 import { WaitingPeers } from './components/screens/WaitingPeers'
-import { getSeedPeerFromURL, PeerInitializer } from './utils/peer'
+import { getSeedPeerFromURL } from './utils/peer'
 import { useP2P } from './hooks/useP2p'
 
 function getRoomFromURL() {
     const hash = window.location.hash;
     const match = hash.match(/#room\/([^?]+)/);
     return match ? match[1] : undefined;
-}
-
-function startGame(playerName: string, roomName: string, actions: GameActions) {
-    throw new Error('Function not implemented.')
 }
 
 // Generate a game room name.
@@ -33,10 +28,10 @@ function generateRoomName() {
 }
 
 function App() {
-    const { initialize, isInitialized } = useP2P();
     const [roomName, setRoomName] = useState<string | undefined>();
     const { gameState, actions } = useGameState()
     const { localState, actions: localActions } = useLocalState()
+    const p2p = useP2P();
 
     useEffect(() => {
         let room = getRoomFromURL();
@@ -44,13 +39,15 @@ function App() {
     }, [])
 
     const onInit = useCallback((name: string) => {
-        if (isInitialized) return;
+        if (p2p.isInitialized) return;
         let seedPeer = getSeedPeerFromURL();
-        const id = Math.random().toString(16).substr(2, 5);
-        initialize(id, name, seedPeer)
-    }, [isInitialized])
-
-    const meLoaded = localState.player.id.length > 0;
+        let roomName = generateRoomName();
+        setRoomName(roomName)
+        const id = `${roomName}-${Math.random().toString(16).substr(2, 5)}`;
+        p2p.initialize(id, name, seedPeer)
+        // Now that we've initialized, set the gamestate to be wating-peers
+        actions.setWaitingPeers()
+    }, [p2p.isInitialized])
 
     return (
         <div className="min-h-screen bg-cream">

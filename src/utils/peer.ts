@@ -141,7 +141,6 @@ function initializePeer(
         const me = { ...player, name: player.name, id }
 
         setPlayer(me)
-        gameActions.initGame(me, 'classic')
         gameActions.addPlayer(me)
 
         // connect with seed if any
@@ -154,7 +153,6 @@ function initializePeer(
             }
         }
     });
-
 }
 
 function setupConnection(conn: DataConnection, player: Player, existingPeers: string[], gameState: GameState, gameActions: GameActions) {
