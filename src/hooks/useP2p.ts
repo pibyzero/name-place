@@ -52,6 +52,7 @@ export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
     const [player, setPlayer] = useState<P2PPlayer | undefined>();
     const [peers, setPeers] = useState<Record<string, PeerInfo>>({});
     const [host, setHost] = useState<string>();
+    const [status, setStatus] = useState<'uninitialized' | 'initialized' | 'joined'>('uninitialized');
     const [roomName, setRoomName] = useState<string>();
 
     // Use refs to always have latest values in callbacks
@@ -63,39 +64,33 @@ export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
         peersRef.current = peers;
     }, [player, peers]);
 
-    const createConnection = useCallback((targetPeer: string) => {
-        console.warn(peers, targetPeer, peers[targetPeer])
+    const createConnection = useCallback((targetPeer: string, onOpen: VoidWithArg<DataConnection>) => {
         if (peers[targetPeer] !== undefined) return;
-        console.warn("still in creat onn")
         const currentPeer = playerRef.current?.peer;
-        console.warn("current peer", currentPeer)
         if (!currentPeer || peersRef.current[targetPeer] !== undefined) return;
-        console.warn("still in creat onn")
         let conn = currentPeer.connect(targetPeer);
-        console.warn("setting up conn")
-        setupConnection(conn, handleMessage);
+        setupConnection(conn, handleMessage, onOpen);
         let peerInfo: PeerInfo = {
             id: targetPeer,
             conn,
             totalActionsConsumed: 0
         }
-        console.warn("setting up peers")
         setPeers(prev => ({ ...prev, [targetPeer]: peerInfo }));
-        console.warn("creating connection done")
     }, [peers]);
 
     const handleMessage = useCallback(getMessageHandler({
         onJoinHandshake: (newPlayer: Player) => {
+            let player = playerRef.current;
             if (player?.isHost) {
                 onPlayerJoined(newPlayer)
             }
         },
         onHandshake: () => { },
         onPeerList: (peers: string[]) => {
-            peers.map((p) => createConnection(p))
+            peers.map((p) => createConnection(p, () => { }))
         }
 
-    }), [onPlayerJoined, createConnection]);
+    }), [onPlayerJoined, createConnection, player]);
 
     const isInitialized = useMemo(() => player !== undefined, [player])
 
@@ -114,42 +109,29 @@ export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
             }
             if (seedPeer !== undefined) {
                 console.log("creating connection with host")
-                // createConnection(seedPeer)
                 setHost(seedPeer)
             } else {
                 setHost(id)
             }
             setPlayer(player)
             setRoomName(roomName)
+            setStatus('initialized')
         });
+        peer.on('connection', (conn) => {
+            setupConnection(conn, handleMessage, () => { })
+        })
     }, [isInitialized])
 
     const me: Player | undefined = player ? { id: player.id, name: player.name, isHost: player.isHost } : undefined;
-    // join handshake to host if not host
-    const doJoinHandshake = useCallback(() => {
-        if (!isInitialized || !me) {
-            console.warn("Trying join handshake when not initialized. aborted")
-            return
-        } else if (player && player.isHost) {
-            console.warn("Attempt to handshake with oneself. aborted.")
-            return
-        };
-        if (!host || !peers[host]?.conn) {
-            console.warn("Attempt to join handshake with undefined host. aborted.")
-            return
-        }
-        let hostConn = peers[host].conn
-        hostConn.send({ type: 'join-handshake', data: me })
-    }, [host, peers])
 
     return {
+        status,
         state: {
             player: me,
             host: host,
             roomName,
         } as LocalState,
         actions: {
-            doJoinHandshake
         },
         isInitialized,
         isHost: player?.isHost,
@@ -215,10 +197,10 @@ function createPeer(id: string) {
     return peer
 }
 
-function setupConnection(conn: DataConnection, handleMessage: (m: P2PMessage, f: string) => void) {
+function setupConnection(conn: DataConnection, handleMessage: (m: P2PMessage, f: string) => void, onOpen: VoidWithArg<DataConnection>) {
     conn.on('open', () => {
         console.log('Connection established with:', conn.peer);
-        // maybe do handshakes and etc?
+        onOpen(conn)
     })
 
     conn.on('data', (data) => {
@@ -242,7 +224,6 @@ function setupConnection(conn: DataConnection, handleMessage: (m: P2PMessage, f:
             console.log('[ICE] State changed to:', conn.peerConnection.iceConnectionState);
         };
     }
-
 }
 
 interface HandlerParams {

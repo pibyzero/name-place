@@ -10,6 +10,7 @@ import { useLocalState } from './hooks/useLocalState'
 import { WaitingPeers } from './components/screens/WaitingPeers'
 import { getSeedPeerFromURL } from './utils/peer'
 import { useP2P } from './hooks/useP2p'
+import { DataConnection } from 'peerjs'
 
 function getRoomFromURL() {
     const hash = window.location.hash;
@@ -26,6 +27,8 @@ function generateRoomName() {
     const random = Math.random().toString(16).substr(2, 4);
     return `${adj}-${noun}-${random}`;
 }
+
+const RAND_LEN = 1; // 5
 
 function App() {
     const { gameState, actions } = useGameState()
@@ -46,20 +49,26 @@ function App() {
         if (p2p.isInitialized) return;
         let seedPeer = getSeedPeerFromURL();
         let roomName = p2p.state.roomName || generateRoomName();
-        const id = `${roomName}-${Math.random().toString(16).substr(2, 5)}`;
+        const id = `${roomName}-${Math.random().toString(16).substr(2, RAND_LEN)}`;
         p2p.initialize(roomName, id, name, seedPeer)
     }, [])
 
     useEffect(() => {
+        console.warn('status changed')
+        if (p2p.status != 'initialized' || p2p.isHost) return;
+        // Try create connection with host and join handshake
+        console.log("creating conn with host")
+        p2p.createConnection(p2p.state.host, (conn: DataConnection) => {
+            conn.send({ type: 'join-handshake', data: p2p.state.player })
+        })
+    }, [p2p.status]);
+
+    useEffect(() => {
         if (!p2p.isInitialized || gameState.status != 'uninitialized') return
-        p2p.createConnection(p2p.state.host)
         actions.addPlayer(p2p.state.player)
         actions.setWaitingPeers()
-        if (!p2p.isHost) {
-            console.log("trying join handshake")
-            p2p.actions.doJoinHandshake()
-        }
     }, [p2p.isInitialized])
+    console.warn("players", gameState.players);
 
     return (
         <div className="min-h-screen bg-cream">
