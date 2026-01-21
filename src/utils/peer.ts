@@ -2,10 +2,29 @@ import Peer, { DataConnection } from "peerjs";
 import { GameState, Player } from "../types/game";
 import { GameActions } from "../hooks/useGameState";
 
+export interface PeerInfo {
+    id: string;
+    totalActionsConsumed: number;
+}
+
+export interface LocalState {
+    name: string;
+    id: string; // peerjs id
+    totalActionsConsumed: number;
+    isHost: boolean;
+    p2pState: P2PState;
+}
+
+export interface P2PState {
+    pendingActions: string[];  // TODO: a proper type
+    new_messages: string[];    // peer message buffer
+    peers: Record<string, PeerInfo>;
+}
+
 export function getSeedPeerFromURL() {
     const hash = window.location.hash;
     const match = hash.match(/seed-peer=([^&]+)/);
-    return match ? match[1] : null;
+    return match ? match[1] : undefined;
 }
 
 export function createURL(roomName: string, seedPeer: string) {

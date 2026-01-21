@@ -1,4 +1,4 @@
-import { FC, useState, useMemo } from "react";
+import { FC, useState, useMemo, useEffect } from "react";
 import { GameState, LocalState } from "../../types/game";
 import { createURL } from "../../utils/peer";
 import { Button } from "../ui/Button";
@@ -10,9 +10,22 @@ interface WaitingPeersProps {
 
 export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState }) => {
     const [copied, setCopied] = useState(false);
+    const [meLoaded, setMeLoaded] = useState(false);
 
     // Generate the URL once
     const url = useMemo(() => createURL(localState.roomName, localState.player.id), [localState]);
+
+    useEffect(() => {
+        if (localState.player.id.length > 0) {
+            setMeLoaded(true)
+        }
+    }, [localState.player.id])
+
+    if (!meLoaded) {
+        return <div>
+            Waiting for setting up peer
+        </div>
+    }
 
     // Dummy list of connected peers
     const connectedPeers = gameState.players.map(x => `${x.name} - ${x.id}`);

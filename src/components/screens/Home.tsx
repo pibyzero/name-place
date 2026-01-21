@@ -1,20 +1,23 @@
 import { FC, useState } from 'react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
-import { LocalState } from '../../types/game'
 
 interface HomeProps {
     onInit: (playerName: string) => void
-    localState: LocalState
+    roomName: string | undefined;
 }
 
-export const Home: FC<HomeProps> = ({ onInit: onStart, localState }) => {
+export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
     const [playerName, setPlayerName] = useState('')
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleStart = () => {
-        if (playerName.trim()) {
-            onStart(playerName.trim())
-        }
+        let trimmed = playerName.trim()
+        if (isLoading || !trimmed) return;
+
+        setIsLoading(true);
+        onStart(trimmed);
+        setIsLoading(false);
     }
 
     return (
@@ -35,10 +38,10 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, localState }) => {
 
                 {/* Main Card */}
                 <div className="space-y-6 bg-white bg-opacity-40 rounded-xl p-8">
-                    {localState.roomName !== '' && (
+                    {roomName && (
                         <div className="text-center p-3 bg-teal bg-opacity-20 rounded-lg">
                             <p className="text-gray-700 font-medium">
-                                Joining game ID: <span className="font-bold">{localState.roomName}</span>
+                                Joining game ID: <span className="font-bold">{roomName}</span>
                             </p>
                         </div>
                     )}
@@ -58,13 +61,14 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, localState }) => {
                         disabled={!playerName.trim()}
                         className="w-full"
                         size="large"
+                        isLoading={isLoading}
                     >
-                        {localState.roomName === '' ? "Create a New Game" : "Join Game"}
+                        {!roomName ? "Create a New Game" : "Join Game"}
                     </Button>
                 </div>
 
                 {/* Instructions - Outside the main card for better separation */}
-                {localState.roomName === '' && (
+                {!roomName && (
                     <div className="text-center space-y-4 text-sm text-gray-600">
                         <div className="space-y-2">
                             <p className="font-semibold text-gray-700">How to play:</p>
@@ -86,3 +90,5 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, localState }) => {
         </div>
     )
 }
+
+

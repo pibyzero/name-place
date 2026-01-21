@@ -10,11 +10,12 @@ import { useLocalState } from './hooks/useLocalState'
 import { Player } from './types/game'
 import { WaitingPeers } from './components/screens/WaitingPeers'
 import { getSeedPeerFromURL, PeerInitializer } from './utils/peer'
+import { useP2P } from './hooks/useP2p'
 
 function getRoomFromURL() {
     const hash = window.location.hash;
     const match = hash.match(/#room\/([^?]+)/);
-    return match ? match[1] : null;
+    return match ? match[1] : undefined;
 }
 
 function startGame(playerName: string, roomName: string, actions: GameActions) {
@@ -32,57 +33,29 @@ function generateRoomName() {
 }
 
 function App() {
-    const [roomName, setRoomName] = useState(() => generateRoomName())
-    const [uniqueId] = useState(() => Math.random().toString(16).substr(2, 5));
+    const { initialize, isInitialized } = useP2P();
+    const [roomName, setRoomName] = useState<string | undefined>();
     const { gameState, actions } = useGameState()
     const { localState, actions: localActions } = useLocalState()
 
     useEffect(() => {
-        // Check for presence of peer id and roomname in the url
-        let roomName = getRoomFromURL()
-        if (roomName !== null) {
-            setRoomName(roomName)
-            localActions.setRoomName(roomName)
-        }
+        let room = getRoomFromURL();
+        setRoomName(room);
     }, [])
 
-    const handleGameInit = useCallback((playerName: string) => {
-        let peerId = `${roomName}-${uniqueId}`;
-        let seedPeer: string | null = getSeedPeerFromURL();
+    const onInit = useCallback((name: string) => {
+        if (isInitialized) return;
+        let seedPeer = getSeedPeerFromURL();
+        const id = Math.random().toString(16).substr(2, 5);
+        initialize(id, name, seedPeer)
+    }, [isInitialized])
 
-        // Set room if empty
-        if (localState.roomName === '') {
-            localActions.setRoomName(roomName)
-        }
-
-        let host: Player = {
-            id: peerId,
-            name: playerName,
-        };
-        localActions.setPlayer(host)
-
-        // initialize peer, this can be better
-        let initPeer = (new PeerInitializer())
-            .withName(playerName)
-            .withId(peerId)
-            .withPlayerSetter(localActions.setPlayer)
-            .withGameActions(actions);
-
-        initPeer.initialize(gameState, seedPeer, localState.peers)
-
-    }, [localState, gameState]);
-
-    const handleGameStart = (players: any[], mode: 'classic' | 'timer') => {
-        actions.startGame(players, mode)
-        actions.proceedFromSetup()
-    }
-
-    const currentPlayer = localState.player
+    const meLoaded = localState.player.id.length > 0;
 
     return (
         <div className="min-h-screen bg-cream">
             {gameState.status === 'uninitialized' && (
-                <Home onInit={handleGameInit} localState={localState} />
+                <Home onInit={onInit} roomName={roomName} />
             )}
 
             {gameState.status === 'waiting-peers' && (
@@ -152,4 +125,3 @@ function App() {
 }
 
 export default App
-

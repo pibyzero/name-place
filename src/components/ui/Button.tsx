@@ -1,36 +1,47 @@
 import { ButtonHTMLAttributes, FC } from 'react'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary'
-  size?: 'small' | 'medium' | 'large'
+    variant?: 'primary' | 'secondary'
+    size?: 'small' | 'medium' | 'large'
+    isLoading?: boolean
 }
 
+const Spinner = () => (
+    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+);
+
 export const Button: FC<ButtonProps> = ({
-  children,
-  variant = 'primary',
-  size = 'medium',
-  className = '',
-  ...props
+    children,
+    variant = 'primary',
+    size = 'medium',
+    className = '',
+    isLoading = false,
+    ...props
 }) => {
-  const baseClasses = 'font-semibold rounded-lg transition-all duration-200 hover:scale-102 disabled:opacity-50 disabled:cursor-not-allowed border'
+    const baseClasses = 'font-semibold rounded-lg transition-all duration-200 hover:scale-102 disabled:opacity-50 disabled:cursor-not-allowed border'
 
-  const variantClasses = {
-    primary: 'bg-coral text-white hover:bg-opacity-90 border-coral',
-    secondary: 'bg-teal text-white hover:bg-opacity-90 border-teal'
-  }
+    const variantClasses = {
+        primary: 'bg-coral text-white hover:bg-opacity-90 border-coral',
+        secondary: 'bg-teal text-white hover:bg-opacity-90 border-teal'
+    }
 
-  const sizeClasses = {
-    small: 'px-4 py-2 text-sm',
-    medium: 'px-6 py-3 text-base',
-    large: 'px-8 py-4 text-lg'
-  }
+    const sizeClasses = {
+        small: 'px-4 py-2 text-sm',
+        medium: 'px-6 py-3 text-base',
+        large: 'px-8 py-4 text-lg'
+    }
 
-  return (
-    <button
-      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
-      {...props}
-    >
-      {children}
-    </button>
-  )
+    return (
+        <button
+            className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+            {...props}
+        >
+            {isLoading && <>
+                <Spinner />
+                {' '}
+            </>
+            }
+            {children}
+        </button>
+    )
 }
