@@ -1,6 +1,6 @@
 import { FC, useState, useMemo } from "react";
 import { GameState, LocalState } from "../../types/game";
-import { createURL } from "../../utils/peer";
+import { createURL } from "../../utils/p2p";
 import { Button } from "../ui/Button";
 
 interface WaitingPeersProps {
@@ -17,7 +17,6 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState }) =
     // Dummy list of connected peers
     const connectedPeers = gameState.players.map(x => `${x.name} - ${x.id}`);
     const me = gameState.players.filter(x => x.id == localState.player.id)[0];
-    console.warn({ me });
 
     const handleCopyUrl = async () => {
         try {

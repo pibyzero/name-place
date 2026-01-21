@@ -8,7 +8,7 @@ import { Leaderboard } from './components/screens/Leaderboard'
 import { useCallback, useEffect, } from 'react'
 import { useLocalState } from './hooks/useLocalState'
 import { WaitingPeers } from './components/screens/WaitingPeers'
-import { getSeedPeerFromURL } from './utils/peer'
+import { getSeedPeerFromURL } from './utils/p2p'
 import { useP2P } from './hooks/useP2p'
 import { DataConnection } from 'peerjs'
 
@@ -31,12 +31,9 @@ function generateRoomName() {
 const RAND_LEN = 1; // 5
 
 function App() {
-    const { gameState, actions } = useGameState()
+    const { gameState, actions: game } = useGameState()
     const { localState, actions: localActions } = useLocalState()
-    const p2p = useP2P({
-        onPlayerJoined: actions.addPlayer,
-        onGameAction: (_: any) => { }
-    });
+    const p2p = useP2P();
 
     useEffect(() => {
         let roomName = getRoomFromURL()
@@ -44,6 +41,33 @@ function App() {
             p2p.setRoomName(roomName)
         }
     })
+
+    // Wait for peer game events
+    useEffect(() => {
+        if (p2p.peerEvents.length == 0) return
+        game.applyEvents(p2p.peerEvents)
+        // clear peer events, this moves events to all game events
+        p2p.actions.clearPeerEvents()
+    }, [p2p.peerEvents])
+
+    // Wait for allGameEvents to change
+    useEffect(() => {
+        if (p2p.allGameEvents.length == 0) return
+        console.warn("broadcasting events", p2p.allGameEvents)
+        p2p.actions.broadcastGameEvents()
+    }, [p2p.allGameEvents])
+
+    // Also set timer just in case
+    useEffect(() => {
+        if (p2p.allGameEvents.length === 0) return;
+
+        const intervalId = setInterval(() => {
+            console.warn("broadcasting events from timer tick");
+            p2p.actions.broadcastGameEvents();
+        }, 5 * 1000);
+
+        return () => clearInterval(intervalId); // Cleanup on unmount
+    }, [p2p.allGameEvents, p2p.actions]);
 
     const onInit = useCallback((name: string) => {
         if (p2p.isInitialized) return;
@@ -54,10 +78,8 @@ function App() {
     }, [])
 
     useEffect(() => {
-        console.warn('status changed')
         if (p2p.status != 'initialized' || p2p.isHost) return;
         // Try create connection with host and join handshake
-        console.log("creating conn with host")
         p2p.createConnection(p2p.state.host, (conn: DataConnection) => {
             conn.send({ type: 'join-handshake', data: p2p.state.player })
         })
@@ -65,10 +87,11 @@ function App() {
 
     useEffect(() => {
         if (!p2p.isInitialized || gameState.status != 'uninitialized') return
-        actions.addPlayer(p2p.state.player)
-        actions.setWaitingPeers()
+        const evAddPlayer = p2p.create.addPlayerEvent(p2p.state.player)
+        const evWaiting = p2p.create.setWaitingEvent()
+        const events = [evAddPlayer, evWaiting]
+        game.applyEvents(events)
     }, [p2p.isInitialized])
-    console.warn("players", gameState.players);
 
     return (
         <div className="min-h-screen bg-cream">
@@ -87,7 +110,7 @@ function App() {
 
             {gameState.status === 'letter-selection' && (
                 <LetterSelection
-                    onSelectLetter={actions.selectLetter}
+                    onSelectLetter={game.selectLetter}
                     currentRound={gameState.currentRound}
                     playerName={currentPlayer?.name || 'Player'}
                 />
@@ -104,10 +127,10 @@ function App() {
                     currentRound={gameState.currentRound}
                     mode={gameState.mode}
                     roundStopped={!!gameState.roundData.stoppedBy}
-                    onSelectPlayer={actions.setCurrentPlayer}
-                    onUpdateAnswer={actions.updateAnswer}
-                    onStopRound={actions.stopRound}
-                    onSubmit={actions.proceedToReview}
+                    onSelectPlayer={game.setCurrentPlayer}
+                    onUpdateAnswer={game.updateAnswer}
+                    onStopRound={game.stopRound}
+                    onSubmit={game.proceedToReview}
                 />
             )}
 
@@ -120,8 +143,8 @@ function App() {
                     letter={gameState.selectedLetter}
                     currentRound={gameState.currentRound}
                     reviewsSubmitted={gameState.reviewsSubmitted}
-                    onSelectPlayer={actions.setCurrentPlayer}
-                    onSubmitReview={actions.submitReview}
+                    onSelectPlayer={game.setCurrentPlayer}
+                    onSubmitReview={game.submitReview}
                 />
             )}
 
@@ -134,8 +157,8 @@ function App() {
                     letter={gameState.selectedLetter}
                     currentRound={gameState.currentRound}
                     totalScores={gameState.scores}
-                    onNextRound={actions.nextRound}
-                    onEndGame={actions.endGame}
+                    onNextRound={game.nextRound}
+                    onEndGame={game.endGame}
                 />
             )}
         </div>

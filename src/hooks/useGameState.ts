@@ -5,7 +5,8 @@ import {
     Player,
     PlayerAnswers,
     ValidationVote,
-    RoundData
+    RoundData,
+    GameEvent
 } from '../types/game'
 import { DEFAULT_CATEGORIES, TIMER_DURATION } from '../utils/constants'
 import { calculateRoundScores } from '../utils/scoring'
@@ -39,6 +40,8 @@ export interface GameActions {
     nextRound: () => {},
     resetGame: () => {},
     endGame: () => {}
+    applyEvent: (ev: GameEvent) => {}
+    applyEvents: (evs: GameEvent[]) => {}
 }
 
 export const useGameState = () => {
@@ -190,24 +193,6 @@ export const useGameState = () => {
         })
     }, [])
 
-    const stopRound = useCallback(() => {
-        if (gameState.mode !== 'classic' || !gameState.roundData) return
-
-        setGameState(prev => ({
-            ...prev,
-            roundData: {
-                ...prev.roundData!,
-                stoppedBy: prev.currentPlayerId,
-                stoppedAt: Date.now()
-            }
-        }))
-
-        // Give a moment for players to see the stop, then proceed
-        setTimeout(() => {
-            proceedToReview()
-        }, 2000)
-    }, [gameState.mode, gameState.roundData])
-
     const proceedToReview = useCallback(() => {
         setIsTimerActive(false)
         setGameState(prev => ({
@@ -280,6 +265,23 @@ export const useGameState = () => {
         }))
     }, [])
 
+    const applyEvent = useCallback((ev: GameEvent) => {
+        switch (ev.type) {
+            case 'add-player':
+                addPlayer(ev.payload)
+                break;
+            case 'set-waiting-status':
+                setGameState(prev => ({ ...prev, status: 'waiting-peers' }))
+                break;
+            case 'commence':
+                break;
+        }
+    }, [gameState])
+
+    const applyEvents = useCallback((evs: GameEvent[]) => {
+        evs.forEach(applyEvent)
+    }, [gameState])
+
     return {
         gameState,
         actions: {
@@ -290,13 +292,14 @@ export const useGameState = () => {
             setCurrentPlayer,
             addPlayer,
             updateAnswer,
-            stopRound,
             proceedToReview,
             submitReview,
             proceedToResults,
             nextRound,
             resetGame,
-            endGame
+            endGame,
+            applyEvent,
+            applyEvents
         } as GameActions
     }
 }

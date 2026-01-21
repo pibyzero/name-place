@@ -1,43 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { LocalState, Player } from "../types/game"
+import { GameEvent, GameEventType, LocalState, Player } from "../types/game"
 import Peer, { DataConnection } from "peerjs";
-
-const USE_PROD = false;
-
-// ============================================================================
-// TYPES
-// ============================================================================
-
-export interface P2PMessage {
-    type: 'join-handshake' | 'handshake' | 'peer-list' | 'sync' | 'game-action';
-    data: any;
-}
-
-export interface JoinHandshakeMessage extends P2PMessage {
-    type: 'join-handshake';
-    data: Player;
-}
-
-
-export interface HandshakeMessage extends P2PMessage {
-    type: 'handshake';
-    data: Player;
-}
-
-export interface PeerListMessage extends P2PMessage {
-    type: 'peer-list';
-    data: string[];
-}
-
-export interface SyncMessage extends P2PMessage {
-    type: 'sync';
-    data: any;
-}
-
-export interface GameActionMessage extends P2PMessage {
-    type: 'game-action';
-    data: string;
-}
+import { VoidWithArg } from "../types/common";
+import { P2PMessage, PeerInfo } from "../types/p2p";
+import { createPeer, getMessageHandler, setupConnection } from "../utils/p2p";
 
 export interface UseP2PProps {
     onPlayerJoined: VoidWithArg<Player>
@@ -48,9 +14,13 @@ interface P2PPlayer extends Player {
     peer: Peer
 }
 
-export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
+export function useP2P() {
     const [player, setPlayer] = useState<P2PPlayer | undefined>();
     const [peers, setPeers] = useState<Record<string, PeerInfo>>({});
+    const [allGameEvents, setAllGameEvents] = useState<GameEvent[]>([]);
+    // Game events received/derived from p2p messages. These will be consumed and copied over to all Game
+    // Events
+    const [peerEvents, setPeerEvents] = useState<GameEvent[]>([]);
     const [host, setHost] = useState<string>();
     const [status, setStatus] = useState<'uninitialized' | 'initialized' | 'joined'>('uninitialized');
     const [roomName, setRoomName] = useState<string>();
@@ -68,12 +38,14 @@ export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
         if (peers[targetPeer] !== undefined) return;
         const currentPeer = playerRef.current?.peer;
         if (!currentPeer || peersRef.current[targetPeer] !== undefined) return;
+        console.warn("creating connection with", targetPeer);
         let conn = currentPeer.connect(targetPeer);
         setupConnection(conn, handleMessage, onOpen);
         let peerInfo: PeerInfo = {
             id: targetPeer,
             conn,
-            totalActionsConsumed: 0
+            myEventsConsumed: 0,
+            peerEventsConsumed: 0,
         }
         setPeers(prev => ({ ...prev, [targetPeer]: peerInfo }));
     }, [peers]);
@@ -82,15 +54,21 @@ export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
         onJoinHandshake: (newPlayer: Player) => {
             let player = playerRef.current;
             if (player?.isHost) {
-                onPlayerJoined(newPlayer)
+                let event = createGameEvent('add-player', newPlayer)
+                setPeerEvents(prev => [...prev, event])
             }
+            // also create connection
+            createConnection(newPlayer.id, () => { })
         },
         onHandshake: () => { },
         onPeerList: (peers: string[]) => {
             peers.map((p) => createConnection(p, () => { }))
+        },
+        onGameEvents: (evs: GameEvent[]) => {
+            setPeerEvents(prev => [...prev, ...evs])
         }
 
-    }), [onPlayerJoined, createConnection, player]);
+    }), [createConnection, player, peerEvents]);
 
     const isInitialized = useMemo(() => player !== undefined, [player])
 
@@ -117,10 +95,70 @@ export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
             setRoomName(roomName)
             setStatus('initialized')
         });
-        peer.on('connection', (conn) => {
+        peer.on('connection', (conn: DataConnection) => {
             setupConnection(conn, handleMessage, () => { })
         })
     }, [isInitialized])
+
+    const sendGameEvents = useCallback(async (peer: string, events: any[]) => {
+        console.warn("sending game events")
+        if (!peers[peer]) {
+            console.warn("Sending data to peer failed. peer:", peer)
+        }
+        const conn = peers[peer].conn;
+        console.warn("conn OPEN", conn.open)
+        console.warn("conn on open listeners", conn.listeners("open"))
+        if (!conn.open) {
+            console.warn("connection not yet open")
+            return false
+        }
+        const p2pMessage: P2PMessage = { type: 'game-events', data: events };
+        await conn.send(p2pMessage);
+        return true
+    }, [peers])
+
+    const createGameEvent = useCallback((type: GameEventType, payload: any) => {
+        let evidx = allGameEvents.length;
+        let event: GameEvent = {
+            id: `${playerRef.current?.id}-${evidx}`,
+            timestamp: new Date().getTime(),
+            type,
+            payload,
+        }
+        setAllGameEvents(prev => [...prev, event])
+        return event
+    }, [allGameEvents]);
+
+    // Clear peer events and append them to all game events
+    const clearPeerEvents = useCallback(() => {
+        setAllGameEvents(prev => [...prev, ...peerEvents])
+        setPeerEvents([])
+    }, [peerEvents, allGameEvents])
+
+    // Broadcast game events based on peer
+    const broadcastGameEvents = useCallback(() => {
+
+        let newPeers: Record<string, PeerInfo> = {};
+
+        Object.entries(peers).forEach(async ([peerId, peerinfo]) => {
+            let start = peerinfo.myEventsConsumed;
+            // Filter events not from the peer itself
+            const events = allGameEvents.slice(start).filter((ev) => ev.id.indexOf(peerId) < 0);
+            let ok = false;
+            if (events.length > 0) {
+                console.warn("sending game events to", peerId)
+                ok = await sendGameEvents(peerId, events);
+                console.warn("OK?", ok)
+            }
+            // update consumed events count only if send succeeded
+            if (ok) {
+                let newPeerInfo: PeerInfo = { ...peerinfo, myEventsConsumed: allGameEvents.length };
+                newPeers[peerId] = newPeerInfo
+            }
+        })
+        setPeers(prev => ({ ...prev, ...newPeers }))
+
+    }, [peers, allGameEvents])
 
     const me: Player | undefined = player ? { id: player.id, name: player.name, isHost: player.isHost } : undefined;
 
@@ -132,122 +170,19 @@ export function useP2P({ onPlayerJoined, onGameAction }: UseP2PProps) {
             roomName,
         } as LocalState,
         actions: {
+            broadcastGameEvents,
+            clearPeerEvents,
+        },
+        create: {
+            addPlayerEvent: (player: Player) => createGameEvent('add-player', player),
+            setWaitingEvent: () => createGameEvent('set-waiting-status', undefined),
         },
         isInitialized,
         isHost: player?.isHost,
         initialize,
         setRoomName,
         createConnection,
-    }
-}
-
-interface PeerInfo {
-    id: string,
-    conn: DataConnection,
-    totalActionsConsumed: number;
-}
-
-type VoidWithArg<A> = (p: A) => void;
-
-const prodConfig = {
-    config: {
-        iceServers: [
-            { urls: 'stun:stun.relay.metered.ca:80' },
-            {
-                urls: 'turn:global.relay.metered.ca:80',
-                username: '1b6bf3d10c59125af303d465',
-                credential: 'H9EaxlQ4CaKIzTjg'
-            },
-            {
-                urls: 'turn:global.relay.metered.ca:80?transport=tcp',
-                username: '1b6bf3d10c59125af303d465',
-                credential: 'H9EaxlQ4CaKIzTjg'
-            },
-            {
-                urls: 'turn:global.relay.metered.ca:443?transport=tcp',
-                username: '1b6bf3d10c59125af303d465',
-                credential: 'H9EaxlQ4CaKIzTjg'
-            },
-            {
-                urls: 'turn:global.relay.metered.ca:443',
-                username: '1b6bf3d10c59125af303d465',
-                credential: 'H9EaxlQ4CaKIzTjg'
-            },
-        ],
-        iceTransportPolicy: 'all'
-    },
-    debug: 2,
-};
-
-const localhost = '192.168.1.69';
-// const localhost = 'localhost';
-
-const localConfig = {
-    host: localhost,
-    port: 9000,
-    path: '/',
-    config: {
-        iceServers: []   // Empty! No STUN/TURN for local connections
-    },
-    debug: 2
-}
-
-function createPeer(id: string) {
-    const peer = new Peer(id, USE_PROD ? prodConfig : localConfig)
-    return peer
-}
-
-function setupConnection(conn: DataConnection, handleMessage: (m: P2PMessage, f: string) => void, onOpen: VoidWithArg<DataConnection>) {
-    conn.on('open', () => {
-        console.log('Connection established with:', conn.peer);
-        onOpen(conn)
-    })
-
-    conn.on('data', (data) => {
-        let p2pdata = data as P2PMessage;
-        console.log('[DEBUG] Received data from', conn.peer, ':', p2pdata.type);
-        handleMessage(p2pdata, conn.peer)
-    })
-
-    conn.on('close', () => {
-        console.log('[DEBUG] Connection closed with:', conn.peer);
-        // TODO: cleanup?
-    })
-
-    conn.on('error', (err) => {
-        console.error('[ERROR] Connection error with', conn.peer, ':', err);
-    })
-
-    // Log ICE connection state changes
-    if (conn.peerConnection) {
-        conn.peerConnection.oniceconnectionstatechange = () => {
-            console.log('[ICE] State changed to:', conn.peerConnection.iceConnectionState);
-        };
-    }
-}
-
-interface HandlerParams {
-    onJoinHandshake: VoidWithArg<Player>;
-    onHandshake: VoidWithArg<Player>;
-    onPeerList: VoidWithArg<string[]>;
-}
-
-function getMessageHandler({ onJoinHandshake, onHandshake, onPeerList }: HandlerParams) {
-    return (msg: P2PMessage, _fromPeer: string) => {
-        switch (msg.type) {
-            case "join-handshake":
-                onJoinHandshake(msg.data as Player)
-                break;
-            case "handshake":
-                onHandshake(msg.data as Player)
-                break;
-            case "peer-list":
-                onPeerList(msg.data)
-                break;
-            case "sync":
-                break;
-            case "game-action":
-                break;
-        }
+        peerEvents,
+        allGameEvents,
     }
 }

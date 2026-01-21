@@ -74,3 +74,24 @@ export interface RoundResult {
     letter: string
     playerScores: PlayerScore[]
 }
+
+// GAME EVENTS
+
+export type GameEventType = 'add-player' | 'set-waiting-status' | 'commence'; // TODO: add other
+
+export interface GameEvent {
+    type: GameEventType;
+    id: string; // This should be "peer_id" + local_seq_no
+    timestamp: number;
+    payload: any;
+}
+
+export interface AddPlayer extends GameEvent {
+    type: 'add-player';
+    payload: Player;
+}
+
+export interface SetWaitingStatus extends GameEvent {
+    type: 'set-waiting-status';
+    payload: undefined;
+}
