@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Player } from "../types/game"
 import Peer, { DataConnection } from "peerjs";
 
+const USE_PROD = false;
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -122,36 +124,48 @@ interface PeerInfo {
 
 type VoidWithArg<A> = (p: A) => void;
 
+const prodConfig = {
+    config: {
+        iceServers: [
+            { urls: 'stun:stun.relay.metered.ca:80' },
+            {
+                urls: 'turn:global.relay.metered.ca:80',
+                username: '1b6bf3d10c59125af303d465',
+                credential: 'H9EaxlQ4CaKIzTjg'
+            },
+            {
+                urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+                username: '1b6bf3d10c59125af303d465',
+                credential: 'H9EaxlQ4CaKIzTjg'
+            },
+            {
+                urls: 'turn:global.relay.metered.ca:443?transport=tcp',
+                username: '1b6bf3d10c59125af303d465',
+                credential: 'H9EaxlQ4CaKIzTjg'
+            },
+            {
+                urls: 'turn:global.relay.metered.ca:443',
+                username: '1b6bf3d10c59125af303d465',
+                credential: 'H9EaxlQ4CaKIzTjg'
+            },
+        ],
+        iceTransportPolicy: 'all'
+    },
+    debug: 2,
+};
+
+const localConfig = {
+    host: 'localhost',  // Your local signaling server
+    port: 9000,          // Port from step 1
+    path: '/',           // Default path
+    config: {
+        iceServers: []   // Empty! No STUN/TURN for local connections
+    },
+    debug: 2
+}
+
 function createPeer(id: string) {
-    const peer = new Peer(id, {
-        config: {
-            iceServers: [
-                { urls: 'stun:stun.relay.metered.ca:80' },
-                {
-                    urls: 'turn:global.relay.metered.ca:80',
-                    username: '1b6bf3d10c59125af303d465',
-                    credential: 'H9EaxlQ4CaKIzTjg'
-                },
-                {
-                    urls: 'turn:global.relay.metered.ca:80?transport=tcp',
-                    username: '1b6bf3d10c59125af303d465',
-                    credential: 'H9EaxlQ4CaKIzTjg'
-                },
-                {
-                    urls: 'turn:global.relay.metered.ca:443?transport=tcp',
-                    username: '1b6bf3d10c59125af303d465',
-                    credential: 'H9EaxlQ4CaKIzTjg'
-                },
-                {
-                    urls: 'turn:global.relay.metered.ca:443',
-                    username: '1b6bf3d10c59125af303d465',
-                    credential: 'H9EaxlQ4CaKIzTjg'
-                },
-            ],
-            iceTransportPolicy: 'all'
-        },
-        debug: 2
-    })
+    const peer = new Peer(id, USE_PROD ? prodConfig : localConfig)
     return peer
 }
 
