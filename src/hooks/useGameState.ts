@@ -6,7 +6,8 @@ import {
     PlayerAnswers,
     ValidationVote,
     RoundData,
-    GameEvent
+    GameEvent,
+    StopRoundData
 } from '../types/game'
 import { DEFAULT_CATEGORIES, TIMER_DURATION } from '../utils/constants'
 import { calculateRoundScores } from '../utils/scoring'
@@ -20,6 +21,7 @@ const initialState: GameState = {
     usedLetters: [],
     categories: DEFAULT_CATEGORIES,
     roundData: null,
+    allRounds: [],
     timeRemaining: TIMER_DURATION,
     scores: new Map(),
     reviewsSubmitted: new Set()
@@ -279,15 +281,21 @@ export const useGameState = () => {
                 break;
             case 'start-game':
                 let startPlayerId = ev.payload
+                // TODO: maybe this should be set in `start-round`?
                 let roundData: RoundData = {
                     turnPlayerIndex: startPlayerId,
-                    roundNumber: 0,
-                    answers: {} as Map<string, PlayerAnswers>,
+                    roundNumber: gameState.currentRound,
+                    answers: {},
                     validations: [],
                 }
                 setGameState(prev => ({ ...prev, status: 'start', roundData }))
                 break;
             case 'start-round':
+                const validPrevStates = ['start'];
+                if (!validPrevStates.includes(gameState.status)) {
+                    console.warn(`Received start round when the game state is ${gameState.status}. Ignoring`)
+                    return
+                }
                 let char = ev.payload;
                 if (!gameState.roundData) {
                     console.warn("Invalid 'start-round' event received. Ignoring")
@@ -300,6 +308,24 @@ export const useGameState = () => {
                         ...prev.roundData as RoundData,
                         letter: char,
                     }
+                }))
+                break;
+            case 'stop-round':
+                let data = ev.payload as StopRoundData;
+                if (gameState.currentRound != data.round) {
+                    console.warn(`Received invalid round ${data.round} instead of ${gameState.currentRound}. Ignoring event.`)
+                    return
+                }
+                let rd = gameState.roundData as RoundData
+                rd.stoppedBy = data.submittedBy
+                rd.stoppedAt = ev.timestamp
+
+                // Set answers by the submitter
+                rd.answers[data.submittedBy] = data.answers
+
+                setGameState(prev => ({
+                    ...prev,
+                    roundData: rd,
                 }))
                 break;
         }

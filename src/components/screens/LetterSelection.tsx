@@ -1,6 +1,7 @@
 import { FC } from 'react'
 import { ALPHABET } from '../../utils/constants'
-import { GameState, LocalState, RoundData } from '../../types/game'
+import { GameState, LocalState } from '../../types/game'
+import { GameLayout } from '../ui/GameLayout'
 
 interface LetterSelectionProps {
     localState: LocalState
@@ -18,31 +19,45 @@ export const LetterSelection: FC<LetterSelectionProps> = ({
     let roundData = gameState.roundData;
     if (!roundData) {
         return (
-            <div>
-                Something went wrong, game not in correct state(there is no data for this round).
-            </div>
+            <GameLayout centerVertically>
+                <div className="text-center text-gray-600">
+                    Something went wrong, game not in correct state (there is no data for this round).
+                </div>
+            </GameLayout>
         )
     }
-    let isMyTurn = gameState.players.some((p, i) => p.id == localState.player.id && i == roundData.turnPlayerIndex);
-    if (!isMyTurn) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6">
-                <div className="max-w-4xl w-full space-y-8">
-                    Waiting for player {roundData.turnPlayerIndex} to provide a letter...
-                </div>
-            </div>
-        )
-    }
-    return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6">
-            <div className="max-w-4xl w-full space-y-8">
-                <div className="text-center">
-                    <p className="text-sm text-gray-600 uppercase tracking-wide mb-2">Round {currentRound}</p>
-                    <h2 className="text-3xl font-bold">
-                        Choose a letter. It's your turn!
-                    </h2>
-                </div>
 
+    let isMyTurn = gameState.players.some((p, i) => p.id == localState.player.id && i == roundData.turnPlayerIndex);
+
+    if (!isMyTurn) {
+        const turnPlayer = gameState.players[roundData.turnPlayerIndex];
+        return (
+            <GameLayout centerVertically>
+                <div className="text-center">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-coral mb-4"></div>
+                    <p className="text-lg text-gray-700">
+                        Waiting for <span className="font-semibold text-coral">{turnPlayer?.name || `player ${roundData.turnPlayerIndex}`}</span> to choose a letter...
+                    </p>
+                </div>
+            </GameLayout>
+        )
+    }
+
+    return (
+        <GameLayout
+            header={
+                <div className="text-center">
+                    <p className="text-sm text-gray-600 uppercase tracking-wide">
+                        Round {currentRound}
+                    </p>
+                </div>
+            }
+            centerVertically
+        >
+            <div className="w-full space-y-8">
+                <h2 className="text-3xl font-bold text-center">
+                    Choose a letter. It's your turn!
+                </h2>
                 <div className="grid grid-cols-6 md:grid-cols-7 gap-3 p-6 bg-white bg-opacity-40 rounded-xl">
                     {ALPHABET.map((letter) => (
                         <button
@@ -55,6 +70,6 @@ export const LetterSelection: FC<LetterSelectionProps> = ({
                     ))}
                 </div>
             </div>
-        </div>
+        </GameLayout>
     )
 }

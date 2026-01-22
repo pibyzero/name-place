@@ -5,7 +5,7 @@ import { calculateRoundScores, getPlayerScores, isAnswerValid } from '../../util
 
 interface LeaderboardProps {
     players: Player[]
-    answers: Map<string, PlayerAnswers>
+    answers: Record<string, PlayerAnswers>
     validations: ValidationVote[]
     categories: string[]
     letter: string

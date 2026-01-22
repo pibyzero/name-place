@@ -1,17 +1,15 @@
 import { useGameState } from './hooks/useGameState'
 import { Home } from './components/screens/Home'
-import { PlayerSetup } from './components/screens/PlayerSetup'
 import { LetterSelection } from './components/screens/LetterSelection'
-import { MultiPlayerGamePlay } from './components/screens/MultiPlayerGamePlay'
+import { RoundPlay } from './components/screens/Round'
 import { ReviewPhase } from './components/screens/ReviewPhase'
 import { Leaderboard } from './components/screens/Leaderboard'
 import { useCallback, useEffect, } from 'react'
-import { useLocalState } from './hooks/useLocalState'
 import { WaitingPeers } from './components/screens/WaitingPeers'
 import { getSeedPeerFromURL } from './utils/p2p'
 import { useP2P } from './hooks/useP2p'
 import { DataConnection } from 'peerjs'
-import { RoundData } from './types/game'
+import { PlayerAnswers, StopRoundData } from './types/game'
 
 function getRoomFromURL() {
     const hash = window.location.hash;
@@ -25,7 +23,7 @@ function generateRoomName() {
     const nouns = ['tiger', 'ocean', 'mountain', 'forest', 'river', 'storm', 'eagle'];
     const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
     const noun = nouns[Math.floor(Math.random() * nouns.length)];
-    const random = Math.random().toString(16).substr(2, 4);
+    const random = Math.random().toString(16).slice(2, 2 + 4);
     return `${adj}-${noun}-${random}`;
 }
 
@@ -33,7 +31,6 @@ const RAND_LEN = 1; // 5
 
 function App() {
     const { gameState, actions: game } = useGameState()
-    const { localState, actions: localActions } = useLocalState()
     const p2p = useP2P();
 
     useEffect(() => {
@@ -46,6 +43,7 @@ function App() {
     // Wait for peer game events
     useEffect(() => {
         if (p2p.peerEvents.length == 0) return
+        console.warn("received peer events", p2p.peerEvents)
         game.applyEvents(p2p.peerEvents)
         // clear peer events, this moves events to all game events
         p2p.actions.clearPeerEvents()
@@ -74,7 +72,7 @@ function App() {
         if (p2p.isInitialized) return;
         let seedPeer = getSeedPeerFromURL();
         let roomName = p2p.state.roomName || generateRoomName();
-        const id = `${roomName}-${Math.random().toString(16).substr(2, RAND_LEN)}`;
+        const id = `${roomName}-${Math.random().toString(16).slice(2, 2 + RAND_LEN)}`;
         p2p.initialize(roomName, id, name, seedPeer)
     }, [])
 
@@ -99,7 +97,7 @@ function App() {
 
     const onStartGame = useCallback(() => {
         let playerIndex = 0; // Game always starts with zero indexed player and everyone takes turn
-        let ev = p2p.create.startGameEvent(0)
+        let ev = p2p.create.startGameEvent(playerIndex)
         game.applyEvents([ev])
     }, [p2p, game])
 
@@ -110,6 +108,17 @@ function App() {
         // maybe wait some sec just in case others are not synced
         game.applyEvents([ev])
     }, [p2p, game])
+
+    const onStopRound = useCallback((ans: PlayerAnswers) => {
+        let data: StopRoundData = {
+            answers: ans,
+            submittedBy: p2p.state.player.id,
+            round: gameState.currentRound
+        }
+        let ev = p2p.create.stopRoundEvent(data)
+        game.applyEvent(ev)
+        p2p.actions.broadcastGameEvents()
+    }, [p2p, game, gameState])
 
     return (
         <div className="min-h-screen bg-cream">
@@ -131,17 +140,16 @@ function App() {
             )}
 
             {gameState.status === 'round-started' && gameState.roundData && (
-                <MultiPlayerGamePlay
-                    letter={gameState.roundData.letter}
+                <RoundPlay
                     gameState={gameState}
-                    onStopRound={game.stopRound}
+                    onClickStopRound={onStopRound}
                 />
             )}
 
             {gameState.status === 'review' && gameState.roundData && (
                 <ReviewPhase
                     players={gameState.players}
-                    currentPlayerId={localState.player.id}
+                    currentPlayerId={p2p.state.player.id}
                     answers={gameState.roundData.answers}
                     categories={gameState.categories}
                     letter={gameState.selectedLetter}

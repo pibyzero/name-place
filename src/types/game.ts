@@ -24,7 +24,7 @@ export interface RoundData {
     turnPlayerIndex: number,  // Index of the player whose turn it is
     roundNumber: number
     letter?: string
-    answers: Map<string, PlayerAnswers> // playerId -> answers
+    answers: Record<string, PlayerAnswers> // playerId -> answers
     validations: ValidationVote[]
     stoppedBy?: string
     stoppedAt?: number
@@ -41,8 +41,6 @@ export interface LocalState {
     player: Player
     host: string
     roomName: string
-    screen: GameScreen
-    peers: string[]
 }
 
 // Expanded GameStatus to represent all game states
@@ -67,6 +65,7 @@ export interface GameState {
     usedLetters: string[]
     categories: string[]
     roundData: RoundData | null
+    allRounds: RoundData[]
     timeRemaining: number
     scores: Map<string, number> // playerId -> total score
     reviewsSubmitted: Set<string> // playerIds who submitted reviews
@@ -116,5 +115,11 @@ export interface StartRoundEvent extends GameEvent {
 
 export interface StopRoundEvent extends GameEvent {
     type: 'stop-round'
-    payload: any // TODO: define
+    payload: StopRoundData
+}
+
+export interface StopRoundData {
+    answers: PlayerAnswers  // answers by the player
+    round: number
+    submittedBy: string     // player id
 }

@@ -6,7 +6,7 @@ import { PlayerTabs } from '../ui/PlayerTabs'
 interface ReviewPhaseProps {
     players: Player[]
     currentPlayerId: string
-    answers: Map<string, PlayerAnswers>
+    answers: Record<string, PlayerAnswers>
     categories: string[]
     letter: string
     currentRound: number
@@ -118,8 +118,8 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                             <span
                                 key={player.id}
                                 className={`text-sm px-3 py-1.5 rounded-full ${reviewsSubmitted.has(player.id)
-                                        ? 'bg-green-200 text-green-800 font-medium'
-                                        : 'bg-white bg-opacity-60 text-gray-600'
+                                    ? 'bg-green-200 text-green-800 font-medium'
+                                    : 'bg-white bg-opacity-60 text-gray-600'
                                     }`}
                             >
                                 {player.name} {reviewsSubmitted.has(player.id) ? '✓' : '⏳'}
@@ -208,11 +208,10 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                                                     <div className="flex flex-col gap-1">
                                                                         <span className="text-sm font-medium">{answer}</span>
                                                                         {validationStatus !== undefined && (
-                                                                            <div className={`text-xs px-2 py-1 rounded text-center font-semibold ${
-                                                                                validationStatus
-                                                                                    ? 'bg-green-100 text-green-700'
-                                                                                    : 'bg-red-100 text-red-700'
-                                                                            }`}>
+                                                                            <div className={`text-xs px-2 py-1 rounded text-center font-semibold ${validationStatus
+                                                                                ? 'bg-green-100 text-green-700'
+                                                                                : 'bg-red-100 text-red-700'
+                                                                                }`}>
                                                                                 {validationStatus ? '✓ Valid' : '✗ Invalid'}
                                                                             </div>
                                                                         )}

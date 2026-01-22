@@ -1,6 +1,7 @@
 import { FC, useState } from 'react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
+import { GameLayout } from '../ui/GameLayout';
 
 interface HomeProps {
     onInit: (playerName: string) => void
@@ -19,24 +20,17 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
         onStart(trimmed);
         setIsLoading(false);
     }
-
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6">
-            <div className="max-w-md w-full flex flex-col gap-12">
-                {/* Game Title */}
+        <GameLayout maxWidth="sm" centerVertically>
+            <div className="w-full space-y-12">
+                {/* Title */}
                 <div className="text-center">
-                    <h1 className="text-5xl font-bold mb-2 text-coral">
-                        Name Place
-                    </h1>
-                    <h2 className="text-3xl font-bold text-teal">
-                        Animal Thing
-                    </h2>
-                    <p className="mt-4 text-gray-600 text-sm">
-                        The classic word game with friends
-                    </p>
+                    <h1 className="text-5xl font-bold mb-2 text-coral">Name Place</h1>
+                    <h2 className="text-3xl font-bold text-teal">Animal Thing</h2>
+                    <p className="mt-4 text-gray-600 text-sm">The classic word game with friends</p>
                 </div>
 
-                {/* Main Card */}
+                {/* Form Card */}
                 <div className="space-y-6 bg-white bg-opacity-40 rounded-xl p-8">
                     {roomName && (
                         <div className="text-center p-3 bg-teal bg-opacity-20 rounded-lg">
@@ -45,7 +39,6 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                             </p>
                         </div>
                     )}
-
                     <Input
                         label="Enter your name"
                         type="text"
@@ -55,7 +48,6 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                         onKeyDown={(e) => e.key === 'Enter' && handleStart()}
                         autoFocus
                     />
-
                     <Button
                         onClick={handleStart}
                         disabled={!playerName.trim()}
@@ -67,28 +59,20 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                     </Button>
                 </div>
 
-                {/* Instructions - Outside the main card for better separation */}
+                {/* Instructions */}
                 {!roomName && (
                     <div className="text-center space-y-4 text-sm text-gray-600">
-                        <div className="space-y-2">
-                            <p className="font-semibold text-gray-700">How to play:</p>
-                            <p>
-                                Create a game to get a shareable link for your friends
-                            </p>
-                            <div className="flex items-center justify-center gap-2">
-                                <span className="text-gray-400">—</span>
-                                <span className="text-xs uppercase tracking-wider text-gray-500">OR</span>
-                                <span className="text-gray-400">—</span>
-                            </div>
-                            <p>
-                                Use a link from a friend to join their game
-                            </p>
+                        <p className="font-semibold text-gray-700">How to play:</p>
+                        <p>Create a game to get a shareable link for your friends</p>
+                        <div className="flex items-center justify-center gap-2">
+                            <span className="text-gray-400">—</span>
+                            <span className="text-xs uppercase tracking-wider text-gray-500">OR</span>
+                            <span className="text-gray-400">—</span>
                         </div>
+                        <p>Use a link from a friend to join their game</p>
                     </div>
                 )}
             </div>
-        </div>
+        </GameLayout>
     )
 }
-
-
