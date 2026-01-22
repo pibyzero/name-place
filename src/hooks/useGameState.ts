@@ -162,16 +162,20 @@ export const useGameState = () => {
     }, [])
 
     const addPlayer = useCallback((player: Player) => {
-        console.warn("called addplayer", { gameState, player })
         // Do not add if already exists
         if (gameState.players.map(x => x.id).includes(player.id)) {
             return
         }
-        setGameState(prev => ({
-            ...prev,
-            scores: { ...prev.scores, [player.id]: 0 },
-            players: [...prev.players, player]
-        }))
+        // Also, maintain the joining sequence
+        setGameState(prev => {
+            let newplayers = [...prev.players, player]
+            newplayers.sort((a, b) => a.joinedAt - b.joinedAt)
+            return {
+                ...prev,
+                scores: { ...prev.scores, [player.id]: 0 },
+                players: newplayers
+            }
+        })
     }, [])
 
     const updateAnswer = useCallback((playerId: string, category: string, answer: string) => {
@@ -273,7 +277,15 @@ export const useGameState = () => {
             case 'set-waiting-status':
                 setGameState(prev => ({ ...prev, status: 'waiting-peers' }))
                 break;
-            case 'commence':
+            case 'start-game':
+                let startPlayerId = ev.payload
+                let roundData: RoundData = {
+                    turnPlayerIndex: startPlayerId,
+                    roundNumber: 0,
+                    answers: {} as Map<string, PlayerAnswers>,
+                    validations: [],
+                }
+                setGameState(prev => ({ ...prev, status: 'start', roundData }))
                 break;
         }
     }, [gameState])

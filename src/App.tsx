@@ -11,6 +11,7 @@ import { WaitingPeers } from './components/screens/WaitingPeers'
 import { getSeedPeerFromURL } from './utils/p2p'
 import { useP2P } from './hooks/useP2p'
 import { DataConnection } from 'peerjs'
+import { RoundData } from './types/game'
 
 function getRoomFromURL() {
     const hash = window.location.hash;
@@ -40,7 +41,7 @@ function App() {
         if (roomName !== undefined) {
             p2p.setRoomName(roomName)
         }
-    })
+    }, [])
 
     // Wait for peer game events
     useEffect(() => {
@@ -48,12 +49,12 @@ function App() {
         game.applyEvents(p2p.peerEvents)
         // clear peer events, this moves events to all game events
         p2p.actions.clearPeerEvents()
-    }, [p2p.peerEvents])
+    }, [p2p.peerEvents, game, gameState])
 
     // Wait for allGameEvents to change
     useEffect(() => {
         if (p2p.allGameEvents.length == 0) return
-        console.warn("broadcasting events", p2p.allGameEvents)
+        console.warn("broadcasting events")
         p2p.actions.broadcastGameEvents()
     }, [p2p.allGameEvents])
 
@@ -64,7 +65,7 @@ function App() {
         const intervalId = setInterval(() => {
             console.warn("broadcasting events from timer tick");
             p2p.actions.broadcastGameEvents();
-        }, 5 * 1000);
+        }, 2 * 1000);
 
         return () => clearInterval(intervalId); // Cleanup on unmount
     }, [p2p.allGameEvents, p2p.actions]);
@@ -77,11 +78,14 @@ function App() {
         p2p.initialize(roomName, id, name, seedPeer)
     }, [])
 
+    // If p2p initializsed and is not a jost, do a join handshake
     useEffect(() => {
         if (p2p.status != 'initialized' || p2p.isHost) return;
         // Try create connection with host and join handshake
         p2p.createConnection(p2p.state.host, (conn: DataConnection) => {
+            console.warn("trying send join handshake", p2p.state.player)
             conn.send({ type: 'join-handshake', data: p2p.state.player })
+            console.warn("sent join handshake")
         })
     }, [p2p.status]);
 
@@ -93,6 +97,13 @@ function App() {
         game.applyEvents(events)
     }, [p2p.isInitialized])
 
+    const onStartGame = useCallback(() => {
+        let playerIndex = 0; // Game always starts with zero indexed player and everyone takes turn
+        let ev = p2p.create.startGameEvent(0)
+        game.applyEvents([ev])
+    }, [p2p, game])
+
+    console.warn(gameState)
     return (
         <div className="min-h-screen bg-cream">
             {gameState.status === 'uninitialized' && p2p.state && (
@@ -100,19 +111,15 @@ function App() {
             )}
 
             {gameState.status === 'waiting-peers' && p2p.state.player && (
-                <WaitingPeers localState={p2p.state} gameState={gameState} />
+                <WaitingPeers localState={p2p.state} gameState={gameState} onStartGame={onStartGame} />
             )}
 
-
-            {gameState.status === 'player-setup' && (
-                <PlayerSetup onStartGame={handleGameStart} />
-            )}
-
-            {gameState.status === 'letter-selection' && (
+            {gameState.status === 'start' && (
                 <LetterSelection
+                    localState={p2p.state}
                     onSelectLetter={game.selectLetter}
                     currentRound={gameState.currentRound}
-                    playerName={currentPlayer?.name || 'Player'}
+                    gameState={gameState}
                 />
             )}
 

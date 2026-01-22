@@ -5,6 +5,10 @@ import { VoidWithArg } from "../types/common";
 import { P2PMessage, PeerInfo } from "../types/p2p";
 import { createPeer, getMessageHandler, setupConnection } from "../utils/p2p";
 
+// Assumptions:
+//  - All the peers have synced time i.e. none of them are too far in the past or future
+//      - This affects the players joinedAt attribute.
+
 export interface UseP2PProps {
     onPlayerJoined: VoidWithArg<Player>
     onGameAction: VoidWithArg<any>
@@ -82,6 +86,7 @@ export function useP2P() {
             const player = {
                 id,
                 name,
+                joinedAt: new Date().getTime(),
                 isHost: seedPeer === undefined,
                 peer,
             }
@@ -137,7 +142,6 @@ export function useP2P() {
 
     // Broadcast game events based on peer
     const broadcastGameEvents = useCallback(() => {
-
         let newPeers: Record<string, PeerInfo> = {};
 
         Object.entries(peers).forEach(async ([peerId, peerinfo]) => {
@@ -160,7 +164,13 @@ export function useP2P() {
 
     }, [peers, allGameEvents])
 
-    const me: Player | undefined = player ? { id: player.id, name: player.name, isHost: player.isHost } : undefined;
+    const me: Player | undefined = player
+        ? {
+            id: player.id,
+            isHost: player.isHost,
+            joinedAt: player.joinedAt,
+            name: player.name
+        } : undefined;
 
     return {
         status,
@@ -176,6 +186,7 @@ export function useP2P() {
         create: {
             addPlayerEvent: (player: Player) => createGameEvent('add-player', player),
             setWaitingEvent: () => createGameEvent('set-waiting-status', undefined),
+            startGameEvent: (playerIdx: number) => createGameEvent('start-game', playerIdx)
         },
         isInitialized,
         isHost: player?.isHost,

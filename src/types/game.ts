@@ -5,7 +5,8 @@ export type GameMode = 'classic' | 'timer'
 export interface Player {
     id: string
     name: string
-    isHost?: boolean // might not be needed with yjs
+    joinedAt: number;  // timestamp
+    isHost?: boolean
 }
 
 export interface PlayerAnswers {
@@ -20,8 +21,9 @@ export interface ValidationVote {
 }
 
 export interface RoundData {
+    turnPlayerIndex: number,  // Index of the player whose turn it is
     roundNumber: number
-    letter: string
+    letter?: string
     answers: Map<string, PlayerAnswers> // playerId -> answers
     validations: ValidationVote[]
     stoppedBy?: string
@@ -47,6 +49,7 @@ export interface LocalState {
 export type GameStatus =
     | 'uninitialized'     // Home screen
     | 'waiting-peers'     // Waiting for peers to join
+    | 'start'             // Start the game, starts first round
     | 'player-setup'      // Setting up players
     | 'letter-selection'  // Selecting letter for the round
     | 'playing'           // Playing the round
@@ -77,7 +80,7 @@ export interface RoundResult {
 
 // GAME EVENTS
 
-export type GameEventType = 'add-player' | 'set-waiting-status' | 'commence'; // TODO: add other
+export type GameEventType = 'add-player' | 'set-waiting-status' | 'start-game'; // TODO: add other
 
 export interface GameEvent {
     type: GameEventType;
@@ -94,4 +97,9 @@ export interface AddPlayer extends GameEvent {
 export interface SetWaitingStatus extends GameEvent {
     type: 'set-waiting-status';
     payload: undefined;
+}
+
+export interface StartGameEvent extends GameEvent {
+    type: 'start-game';
+    payload: number; // starting playerIndex
 }

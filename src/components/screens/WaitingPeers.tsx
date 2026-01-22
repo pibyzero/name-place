@@ -1,14 +1,17 @@
 import { FC, useState, useMemo } from "react";
-import { GameState, LocalState } from "../../types/game";
+import { GameState, LocalState, Player } from "../../types/game";
 import { createURL } from "../../utils/p2p";
 import { Button } from "../ui/Button";
 
 interface WaitingPeersProps {
     localState: LocalState
     gameState: GameState
+    onStartGame: () => void
 }
 
-export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState }) => {
+const MIN_PLAYERS = 2;
+
+export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState, onStartGame }) => {
     const [copied, setCopied] = useState(false);
 
     // Generate the URL once
@@ -27,6 +30,13 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState }) =
             console.error('Failed to copy URL:', err);
         }
     };
+
+    const preText = (peer: Player) => {
+        if (peer.id == me.id && peer.isHost) return "(You)[Host]"
+        if (peer.id == me.id) return "(You)"
+        if (peer.isHost) return ("[Host]")
+        return ""
+    }
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6">
@@ -70,7 +80,7 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState }) =
                 {/* Connected Peers Section */}
                 <div className="bg-white bg-opacity-40 rounded-xl p-6 space-y-4">
                     <h2 className="text-lg font-semibold text-gray-700">
-                        Connected Peers ({gameState.players.length})
+                        Connected Players ({gameState.players.length})
                     </h2>
                     <div className="space-y-2">
                         {gameState.players.map((peer, index) => (
@@ -80,7 +90,7 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState }) =
                             >
                                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                 <span className="text-gray-700 font-medium">
-                                    {me.id == peer.id && "(You)"} {peer.name} - {peer.id}
+                                    {preText(peer)} {peer.name}
                                 </span>
                             </div>
                         ))}
@@ -91,14 +101,15 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState }) =
                 {localState.player.isHost && <div className="text-center">
                     <Button
                         size="large"
-                        disabled={connectedPeers.length < 2}
+                        disabled={connectedPeers.length < MIN_PLAYERS}
                         className="min-w-[200px]"
+                        onClick={onStartGame}
                     >
                         Start Game ({connectedPeers.length} players)
                     </Button>
-                    {connectedPeers.length < 3 && (
+                    {connectedPeers.length < MIN_PLAYERS && (
                         <p className="text-sm text-gray-500 mt-2">
-                            Need at least 3 players to start
+                            Need at least {MIN_PLAYERS} players to start
                         </p>
                     )}
                 </div>
