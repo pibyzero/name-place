@@ -58,14 +58,10 @@ export interface GameState {
     mode: GameMode
     players: Player[]
     currentRound: number
-    selectedLetter: string
-    usedLetters: string[]
     categories: string[]
-    roundData: RoundData | null
+    roundData: RoundData | null // Current round data
     allRounds: RoundData[]
     timeRemaining: number
-    scores: Map<string, number> // playerId -> total score
-    reviewsSubmitted: Set<string> // playerIds who submitted reviews
 }
 
 export interface RoundResult {

@@ -15,14 +15,10 @@ const initialState: GameState = {
     mode: 'classic',
     players: [],
     currentRound: 1,
-    selectedLetter: '',
-    usedLetters: [],
     categories: DEFAULT_CATEGORIES,
     roundData: null,
     allRounds: [],
     timeRemaining: TIMER_DURATION,
-    scores: new Map(),
-    reviewsSubmitted: new Set()
 }
 
 export interface GameActions {
