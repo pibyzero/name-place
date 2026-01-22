@@ -186,7 +186,8 @@ export function useP2P() {
         create: {
             addPlayerEvent: (player: Player) => createGameEvent('add-player', player),
             setWaitingEvent: () => createGameEvent('set-waiting-status', undefined),
-            startGameEvent: (playerIdx: number) => createGameEvent('start-game', playerIdx)
+            startGameEvent: (playerIdx: number) => createGameEvent('start-game', playerIdx),
+            startRoundEvent: (data: string) => createGameEvent('start-round', data)
         },
         isInitialized,
         isHost: player?.isHost,

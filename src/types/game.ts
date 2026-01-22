@@ -52,7 +52,7 @@ export type GameStatus =
     | 'start'             // Start the game, starts first round
     | 'player-setup'      // Setting up players
     | 'letter-selection'  // Selecting letter for the round
-    | 'playing'           // Playing the round
+    | 'round-started'           // Playing the round
     | 'review'            // Reviewing answers
     | 'results'           // Showing round results
     | 'ended';            // Game ended
@@ -80,7 +80,12 @@ export interface RoundResult {
 
 // GAME EVENTS
 
-export type GameEventType = 'add-player' | 'set-waiting-status' | 'start-game'; // TODO: add other
+export type GameEventType =
+    'add-player'
+    | 'set-waiting-status'
+    | 'start-game'
+    | 'start-round'
+    | 'stop-round'
 
 export interface GameEvent {
     type: GameEventType;
@@ -102,4 +107,14 @@ export interface SetWaitingStatus extends GameEvent {
 export interface StartGameEvent extends GameEvent {
     type: 'start-game';
     payload: number; // starting playerIndex
+}
+
+export interface StartRoundEvent extends GameEvent {
+    type: 'start-round'
+    payload: string; // The character for this round
+}
+
+export interface StopRoundEvent extends GameEvent {
+    type: 'stop-round'
+    payload: any // TODO: define
 }

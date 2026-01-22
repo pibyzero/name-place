@@ -103,7 +103,14 @@ function App() {
         game.applyEvents([ev])
     }, [p2p, game])
 
-    console.warn(gameState)
+    const onSelectLetter = useCallback((letter: string) => {
+        let ev = p2p.create.startRoundEvent(letter)
+        console.warn("broadcasting start round event before applying to current state")
+        p2p.actions.broadcastGameEvents();
+        // maybe wait some sec just in case others are not synced
+        game.applyEvents([ev])
+    }, [p2p, game])
+
     return (
         <div className="min-h-screen bg-cream">
             {gameState.status === 'uninitialized' && p2p.state && (
@@ -117,27 +124,17 @@ function App() {
             {gameState.status === 'start' && (
                 <LetterSelection
                     localState={p2p.state}
-                    onSelectLetter={game.selectLetter}
+                    onSelectLetter={onSelectLetter}
                     currentRound={gameState.currentRound}
                     gameState={gameState}
                 />
             )}
 
-            {gameState.status === 'playing' && gameState.roundData && (
+            {gameState.status === 'round-started' && gameState.roundData && (
                 <MultiPlayerGamePlay
-                    letter={gameState.selectedLetter}
-                    categories={gameState.categories}
-                    players={gameState.players}
-                    currentPlayerId={localState.player.id}
-                    answers={gameState.roundData.answers}
-                    timeRemaining={gameState.timeRemaining}
-                    currentRound={gameState.currentRound}
-                    mode={gameState.mode}
-                    roundStopped={!!gameState.roundData.stoppedBy}
-                    onSelectPlayer={game.setCurrentPlayer}
-                    onUpdateAnswer={game.updateAnswer}
+                    letter={gameState.roundData.letter}
+                    gameState={gameState}
                     onStopRound={game.stopRound}
-                    onSubmit={game.proceedToReview}
                 />
             )}
 

@@ -78,7 +78,7 @@ export const useGameState = () => {
 
     // Auto proceed when timer ends
     useEffect(() => {
-        if (gameState.timeRemaining === 0 && gameState.status === 'playing' && gameState.mode === 'timer') {
+        if (gameState.timeRemaining === 0 && gameState.status === 'round-started' && gameState.mode === 'timer') {
             proceedToReview()
         }
     }, [gameState.timeRemaining, gameState.status, gameState.mode])
@@ -286,6 +286,21 @@ export const useGameState = () => {
                     validations: [],
                 }
                 setGameState(prev => ({ ...prev, status: 'start', roundData }))
+                break;
+            case 'start-round':
+                let char = ev.payload;
+                if (!gameState.roundData) {
+                    console.warn("Invalid 'start-round' event received. Ignoring")
+                    return
+                }
+                setGameState(prev => ({
+                    ...prev,
+                    status: 'round-started',
+                    roundData: {
+                        ...prev.roundData as RoundData,
+                        letter: char,
+                    }
+                }))
                 break;
         }
     }, [gameState])
