@@ -62,7 +62,7 @@ function App() {
 
         const intervalId = setInterval(() => {
             p2p.actions.broadcastGameEvents();
-        }, 2 * 1000);
+        }, 1000);
 
         return () => clearInterval(intervalId); // Cleanup on unmount
     }, [p2p.allGameEvents, p2p.actions]);

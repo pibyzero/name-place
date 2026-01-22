@@ -5,7 +5,8 @@ import {
     RoundData,
     GameEvent,
     AnswersData,
-    GameStatus
+    GameStatus,
+    ReviewData
 } from '../types/game'
 import { DEFAULT_CATEGORIES, TIMER_DURATION } from '../utils/constants'
 
@@ -77,12 +78,11 @@ export const useGameState = () => {
                 break;
             case 'start-game':
                 let startPlayerId = ev.payload
-                // TODO: maybe this should be set in `start-round`?
                 let roundData: RoundData = {
                     turnPlayerIndex: startPlayerId,
                     roundNumber: gameState.currentRound,
                     answers: {},
-                    reviews: [],
+                    reviews: {},
                 }
                 setGameState(prev => ({ ...prev, status: 'started', roundData }))
                 break;
@@ -153,6 +153,50 @@ export const useGameState = () => {
                     ...prev,
                     roundData: srd,
                     status
+                }))
+                break;
+            case 'submit-review':
+                const reviewData = ev.payload as ReviewData
+                if (gameState.currentRound != reviewData.round) {
+                    console.warn(`Received invalid round ${reviewData.round} instead of ${gameState.currentRound}. Ignoring event.`)
+                    return
+                }
+                let rrd = gameState.roundData as RoundData
+                // If already submitted, ignore. First write wins
+                if (!!rrd.reviews[reviewData.submittedBy]) {
+                    console.warn(`Received re-submitted review by player ${reviewData.submittedBy}. Ignoring event.`)
+                    return
+                }
+
+                rrd.reviews[reviewData.submittedBy] = reviewData.answersReview
+
+                // Check if total reviews is equal to the total players.
+                // If so, set the game status to `started` ???
+                let st = gameState.status
+                let curround = gameState.currentRound
+                let allRounds = gameState.allRounds
+                let newrd = rrd
+                if (Object.keys(rrd.reviews).length == gameState.players.length) {
+                    st = 'started'
+                    // TODO: and copy round data to array?
+                    curround += 1
+                    allRounds = [...allRounds, rrd]
+                    // Set new round data
+                    newrd = {
+                        // increment turn player
+                        turnPlayerIndex: (rrd.turnPlayerIndex + 1) % gameState.players.length,
+                        roundNumber: curround,
+                        answers: {},
+                        reviews: {},
+                    }
+                }
+
+                setGameState(prev => ({
+                    ...prev,
+                    roundData: newrd,
+                    status: st,
+                    currentRound: curround,
+                    allRounds
                 }))
                 break;
         }

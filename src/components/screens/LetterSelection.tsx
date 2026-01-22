@@ -1,7 +1,8 @@
-import { FC } from 'react'
+import { FC, useCallback } from 'react'
 import { ALPHABET } from '../../utils/constants'
 import { GameState, LocalState } from '../../types/game'
 import { GameLayout } from '../ui/GameLayout'
+import { Button } from '../ui/Button'
 
 interface LetterSelectionProps {
     localState: LocalState
@@ -17,6 +18,11 @@ export const LetterSelection: FC<LetterSelectionProps> = ({
     gameState
 }) => {
     let roundData = gameState.roundData;
+    const isUsed = useCallback((letter: string) => {
+        return gameState.allRounds.map(r => r.letter?.toLowerCase()).includes(letter.toLowerCase())
+    }, [gameState])
+    console.warn("P is used", isUsed('P'))
+
     if (!roundData) {
         return (
             <GameLayout centerVertically>
@@ -60,13 +66,14 @@ export const LetterSelection: FC<LetterSelectionProps> = ({
                 </h2>
                 <div className="grid grid-cols-6 md:grid-cols-7 gap-3 p-6 bg-white bg-opacity-40 rounded-xl">
                     {ALPHABET.map((letter) => (
-                        <button
+                        <Button
                             key={letter}
                             onClick={() => onSelectLetter(letter)}
-                            className="aspect-square flex items-center justify-center text-2xl font-bold bg-white bg-opacity-60 hover:bg-coral hover:text-white rounded-lg transition-all duration-200 hover:scale-110 border border-gray-200"
+                            className="aspect-square flex items-center justify-center text-2xl font-bold bg-coral hover:bg-opacity-80 hover:text-white hover:scale-110 rounded-lg border border-gray-200"
+                            disabled={isUsed(letter)}
                         >
                             {letter}
-                        </button>
+                        </Button>
                     ))}
                 </div>
             </div>

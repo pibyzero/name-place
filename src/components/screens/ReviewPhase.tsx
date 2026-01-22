@@ -14,11 +14,10 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
     gameState,
     onSubmitReview
 }) => {
-    // Store validations per reviewer to maintain independent states
-    // const [allValidations, setAllValidations] = useState<Map<string, Map<string, Map<string, boolean>>>>(new Map())
     const [reviews, setReviews] = useState<PlayersAnswersValidity>({})
+    const [allReviewsWaiting, setAllReviewsWaiting] = useState(false)
 
-    const reviewsSubmitted = gameState.roundData?.reviews.map(r => r.reviewer) || [];
+    const reviewsSubmitted = Object.keys(gameState.roundData?.reviews || {});
     const players = gameState.players
     let currentPlayerId = localState.player.id;
 
@@ -47,6 +46,7 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
             reviewer: localState.player.id,
             reviews: reviews
         };
+        setAllReviewsWaiting(true)
         onSubmitReview(allReview)
     }, [localState, reviews])
 
@@ -351,6 +351,21 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                     <p>Answers are valid if the majority votes them as valid</p>
                 </div>
             </div>
+            {/* Overlay */}
+            {allReviewsWaiting && (
+                <div className="fixed inset-0 bg-gray-900/70 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center shadow-2xl">
+                        <div className="mb-4">
+                            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-coral"></div>
+                        </div>
+                        <h3 className="text-2xl font-bold mb-2">Review Submitted!</h3>
+                        <p className="text-gray-600">
+                            Waiting for all players to submit their reviews...
+                        </p>
+                    </div>
+                </div>
+            )}
+
         </div>
     )
 }

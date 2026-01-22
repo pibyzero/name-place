@@ -25,7 +25,7 @@ export interface RoundData {
     roundNumber: number
     letter?: string
     answers: Record<string, PlayerAnswers> // playerId -> answers
-    reviews: AnswersReview[]
+    reviews: Record<string, AnswersReview>
     stoppedBy?: string
     stoppedAt?: number
 }
@@ -120,6 +120,11 @@ export interface StopRoundEvent extends GameEvent {
 export interface SubmitAnswersEvent extends GameEvent {
     type: 'submit-answers'
     payload: AnswersData
+}
+
+export interface SubmitReviewEvent extends GameEvent {
+    type: 'submit-review'
+    payload: ReviewData
 }
 
 export interface AnswersData {
