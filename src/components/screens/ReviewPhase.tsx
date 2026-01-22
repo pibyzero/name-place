@@ -1,134 +1,112 @@
-import { FC, useState } from 'react'
-import { Player, PlayerAnswers, ValidationVote } from '../../types/game'
+import { FC, useCallback, useState } from 'react'
+import { AnswersReview as RoundAnswersReview, GameState, LocalState, PlayersAnswersValidity } from '../../types/game'
 import { Button } from '../ui/Button'
-import { PlayerTabs } from '../ui/PlayerTabs'
+import { VoidWithArg } from '../../types/common'
 
 interface ReviewPhaseProps {
-    players: Player[]
-    currentPlayerId: string
-    answers: Record<string, PlayerAnswers>
-    categories: string[]
-    letter: string
-    currentRound: number
-    reviewsSubmitted: Set<string>
-    onSelectPlayer: (playerId: string) => void
-    onSubmitReview: (validations: ValidationVote[]) => void
+    localState: LocalState
+    gameState: GameState
+    onSubmitReview: VoidWithArg<RoundAnswersReview>
 }
 
 export const ReviewPhase: FC<ReviewPhaseProps> = ({
-    players,
-    currentPlayerId,
-    answers,
-    categories,
-    letter,
-    currentRound,
-    reviewsSubmitted,
-    onSelectPlayer,
+    localState,
+    gameState,
     onSubmitReview
 }) => {
     // Store validations per reviewer to maintain independent states
-    const [allValidations, setAllValidations] = useState<Map<string, Map<string, Map<string, boolean>>>>(new Map())
+    // const [allValidations, setAllValidations] = useState<Map<string, Map<string, Map<string, boolean>>>>(new Map())
+    const [reviews, setReviews] = useState<PlayersAnswersValidity>({})
 
-    const currentPlayer = players.find(p => p.id === currentPlayerId)
-    const hasSubmitted = reviewsSubmitted.has(currentPlayerId)
+    const reviewsSubmitted = gameState.roundData?.reviews.map(r => r.reviewer) || [];
+    const players = gameState.players
+    let currentPlayerId = localState.player.id;
+
+    const currentPlayer = gameState.players.find(p => p.id === currentPlayerId)
+    const hasSubmitted = reviewsSubmitted.includes(currentPlayerId)
     const otherPlayers = players.filter(p => p.id !== currentPlayerId)
-    const currentPlayerAnswers = answers.get(currentPlayerId) || {}
+    const currentPlayerAnswers = Object.entries(gameState.roundData?.answers || {})
+        .filter(([p, _]) => p == currentPlayerId)
+        .map(([_, a]) => a)[0];
 
-    // Get current player's validations
-    const validations = allValidations.get(currentPlayerId) || new Map()
-
-    const handleValidation = (playerId: string, category: string, isValid: boolean) => {
-        const currentReviewerValidations = allValidations.get(currentPlayerId) || new Map()
-        const playerValidations = currentReviewerValidations.get(playerId) || new Map()
-        const currentValue = playerValidations.get(category)
-
-        // If clicking the same button again, unset it
-        if (currentValue === isValid) {
-            playerValidations.delete(category)
-        } else {
-            playerValidations.set(category, isValid)
-        }
-
-        const newReviewerValidations = new Map(currentReviewerValidations)
-        newReviewerValidations.set(playerId, playerValidations)
-
-        const newAllValidations = new Map(allValidations)
-        newAllValidations.set(currentPlayerId, newReviewerValidations)
-        setAllValidations(newAllValidations)
+    const handleCellReview = (playerId: string, category: string, isValid: boolean) => {
+        setReviews(prev => ({
+            ...prev,
+            [playerId]: {
+                ...prev[playerId],
+                [category]: isValid
+            }
+        }))
     }
 
+    const categories = gameState.categories;
+    const answers = gameState.roundData?.answers || {};
 
-    const handleSubmit = () => {
-        const votes: ValidationVote[] = []
-        const currentReviewerValidations = allValidations.get(currentPlayerId) || new Map()
-        currentReviewerValidations.forEach((categoryValidations, playerId) => {
-            categoryValidations.forEach((isValid, category) => {
-                votes.push({
-                    validatorId: currentPlayerId,
-                    playerId,
-                    category,
-                    isValid
-                })
-            })
-        })
-        onSubmitReview(votes)
-    }
+    const handleSubmit = useCallback(() => {
+        const allReview: RoundAnswersReview = {
+            reviewer: localState.player.id,
+            reviews: reviews
+        };
+        onSubmitReview(allReview)
+    }, [localState, reviews])
 
     // Check if all non-empty answers have been validated
-    const getNonEmptyAnswerCount = () => {
+    const getNonEmptyAnswerCount = useCallback(() => {
         let count = 0
         otherPlayers.forEach(player => {
-            const playerAnswers = answers.get(player.id) || {}
+            const playerAnswers = answers[player.id] || {}
             categories.forEach(cat => {
                 if (playerAnswers[cat]?.trim()) count++
             })
         })
         return count
-    }
+    }, [otherPlayers, answers])
 
-    const getValidatedCount = () => {
+    const getValidatedCount = useCallback(() => {
         let count = 0
-        const currentReviewerValidations = allValidations.get(currentPlayerId) || new Map()
-        currentReviewerValidations.forEach((categoryValidations) => {
-            count += categoryValidations.size
+        otherPlayers.forEach(player => {
+            const playerAnswers = answers[player.id] || {}
+            categories.forEach(cat => {
+                const plreview = reviews[player.id] || {}
+                if (playerAnswers[cat]?.trim() && plreview[cat] !== undefined) count++
+            })
         })
+
         return count
-    }
+    }, [otherPlayers])
 
     const nonEmptyCount = getNonEmptyAnswerCount()
     const validatedCount = getValidatedCount()
     const allValidated = nonEmptyCount === 0 || validatedCount === nonEmptyCount
 
-    const getValidationStatus = (playerId: string, category: string) => {
-        const currentReviewerValidations = allValidations.get(currentPlayerId) || new Map()
-        const playerValidations = currentReviewerValidations.get(playerId)
-        if (!playerValidations) return undefined
-        return playerValidations.get(category)
-    }
+    const getValidationStatus = useCallback((playerId: string, category: string) => {
+        let plreview = reviews[playerId] || {}
+        return plreview[category]
+    }, [reviews])
 
     return (
         <div className="min-h-screen p-4 md:p-6">
             <div className="max-w-7xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="text-center">
-                    <h2 className="text-2xl font-bold mb-2">Review Phase - Round {currentRound}</h2>
-                    <p className="text-lg text-gray-700">Letter: <span className="font-bold text-coral">{letter}</span></p>
+                    <h2 className="text-2xl font-bold mb-2">Review Phase - Round {gameState.currentRound}</h2>
+                    <p className="text-lg text-gray-700">Letter: <span className="font-bold text-coral">{gameState.roundData?.letter}</span></p>
                     <div className="mt-4 flex flex-wrap justify-center gap-2">
-                        {players.map(player => (
+                        {gameState.players.map(player => (
                             <span
                                 key={player.id}
-                                className={`text-sm px-3 py-1.5 rounded-full ${reviewsSubmitted.has(player.id)
+                                className={`text-sm px-3 py-1.5 rounded-full ${reviewsSubmitted.includes(player.id)
                                     ? 'bg-green-200 text-green-800 font-medium'
                                     : 'bg-white bg-opacity-60 text-gray-600'
                                     }`}
                             >
-                                {player.name} {reviewsSubmitted.has(player.id) ? '✓' : '⏳'}
+                                {player.name} {reviewsSubmitted.includes(player.id) ? '✓' : '⏳'}
                             </span>
                         ))}
                     </div>
                 </div>
 
-                {/* Player Selector */}
+                {/* Player Selector
                 <div className="border-b border-gray-300 pb-4">
                     <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Reviewing as</h3>
                     <PlayerTabs
@@ -139,6 +117,7 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                         submittedPlayers={reviewsSubmitted}
                     />
                 </div>
+                */}
 
                 {/* Review Interface - Matrix View */}
                 <div className="overflow-x-auto">
@@ -189,7 +168,7 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
 
                                         {/* Other players' answers with submitted validations */}
                                         {otherPlayers.map((player, idx) => {
-                                            const playerAnswers = answers.get(player.id) || {}
+                                            const playerAnswers = answers[player.id] || {}
                                             const rowBgColor = idx % 2 === 0 ? 'bg-white bg-opacity-30' : ''
 
                                             return (
@@ -248,7 +227,7 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                     ) : (
                         <>
                             <h3 className="text-xl font-bold mb-4">
-                                {currentPlayer?.name}, validate answers:
+                                {currentPlayer?.name}, review others' answers:
                             </h3>
 
                             {/* Matrix Table */}
@@ -287,7 +266,7 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
 
                                         {/* Other players' answers to review */}
                                         {otherPlayers.map((player, idx) => {
-                                            const playerAnswers = answers.get(player.id) || {}
+                                            const playerAnswers = answers[player.id] || {}
                                             const rowBgColor = idx % 2 === 0 ? 'bg-white bg-opacity-30' : ''
 
                                             return (
@@ -307,7 +286,7 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                                                         <span className="text-sm font-medium">{answer}</span>
                                                                         <div className="flex gap-1">
                                                                             <button
-                                                                                onClick={() => handleValidation(player.id, category, true)}
+                                                                                onClick={() => handleCellReview(player.id, category, true)}
                                                                                 className={`
                                                                                     text-xs px-2 py-1 rounded flex-1 transition-all
                                                                                     ${validationStatus === true
@@ -319,7 +298,7 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                                                                 ✓
                                                                             </button>
                                                                             <button
-                                                                                onClick={() => handleValidation(player.id, category, false)}
+                                                                                onClick={() => handleCellReview(player.id, category, false)}
                                                                                 className={`
                                                                                     text-xs px-2 py-1 rounded flex-1 transition-all
                                                                                     ${validationStatus === false

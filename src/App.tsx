@@ -9,7 +9,7 @@ import { WaitingPeers } from './components/screens/WaitingPeers'
 import { getSeedPeerFromURL } from './utils/p2p'
 import { useP2P } from './hooks/useP2p'
 import { DataConnection } from 'peerjs'
-import { PlayerAnswers, StopRoundData } from './types/game'
+import { PlayerAnswers, AnswersData, AnswersReview, ReviewData } from './types/game'
 
 function getRoomFromURL() {
     const hash = window.location.hash;
@@ -61,7 +61,6 @@ function App() {
         if (p2p.allGameEvents.length === 0) return;
 
         const intervalId = setInterval(() => {
-            console.warn("broadcasting events from timer tick");
             p2p.actions.broadcastGameEvents();
         }, 2 * 1000);
 
@@ -103,19 +102,41 @@ function App() {
 
     const onSelectLetter = useCallback((letter: string) => {
         let ev = p2p.create.startRoundEvent(letter)
-        console.warn("broadcasting start round event before applying to current state")
+        console.warn("broadcasting start round event before applying to current state. game status:", gameState.status)
         p2p.actions.broadcastGameEvents();
         // maybe wait some sec just in case others are not synced
         game.applyEvents([ev])
-    }, [p2p, game])
+    }, [p2p, game, gameState])
 
     const onStopRound = useCallback((ans: PlayerAnswers) => {
-        let data: StopRoundData = {
+        let data: AnswersData = {
             answers: ans,
             submittedBy: p2p.state.player.id,
             round: gameState.currentRound
         }
         let ev = p2p.create.stopRoundEvent(data)
+        game.applyEvent(ev)
+        p2p.actions.broadcastGameEvents()
+    }, [p2p, game, gameState])
+
+    const broadcastAnswers = useCallback((ans: PlayerAnswers) => {
+        let data: AnswersData = {
+            answers: ans,
+            submittedBy: p2p.state.player.id,
+            round: gameState.currentRound
+        }
+        let ev = p2p.create.submitAnswersEvent(data)
+        game.applyEvent(ev)
+        p2p.actions.broadcastGameEvents()
+    }, [p2p, game, gameState])
+
+    const onSubmitReview = useCallback((answersReview: AnswersReview) => {
+        let data: ReviewData = {
+            answersReview,
+            submittedBy: p2p.state.player.id,
+            round: gameState.currentRound,
+        }
+        let ev = p2p.create.submitReviewEvent(data)
         game.applyEvent(ev)
         p2p.actions.broadcastGameEvents()
     }, [p2p, game, gameState])
@@ -130,7 +151,7 @@ function App() {
                 <WaitingPeers localState={p2p.state} gameState={gameState} onStartGame={onStartGame} />
             )}
 
-            {gameState.status === 'start' && (
+            {gameState.status === 'started' && (
                 <LetterSelection
                     localState={p2p.state}
                     onSelectLetter={onSelectLetter}
@@ -143,28 +164,23 @@ function App() {
                 <RoundPlay
                     gameState={gameState}
                     onClickStopRound={onStopRound}
+                    broadcastAnswers={broadcastAnswers}
                 />
             )}
 
-            {gameState.status === 'review' && gameState.roundData && (
+            {gameState.status === 'reviewing' && gameState.roundData && (
                 <ReviewPhase
-                    players={gameState.players}
-                    currentPlayerId={p2p.state.player.id}
-                    answers={gameState.roundData.answers}
-                    categories={gameState.categories}
-                    letter={gameState.selectedLetter}
-                    currentRound={gameState.currentRound}
-                    reviewsSubmitted={gameState.reviewsSubmitted}
-                    onSelectPlayer={game.setCurrentPlayer}
-                    onSubmitReview={game.submitReview}
+                    localState={p2p.state}
+                    gameState={gameState}
+                    onSubmitReview={onSubmitReview}
                 />
             )}
 
-            {gameState.status === 'results' && gameState.roundData && (
+            {gameState.status === 'ended' && gameState.roundData && (
                 <Leaderboard
                     players={gameState.players}
                     answers={gameState.roundData.answers}
-                    validations={gameState.roundData.validations}
+                    validations={gameState.roundData.reviews}
                     categories={gameState.categories}
                     letter={gameState.selectedLetter}
                     currentRound={gameState.currentRound}

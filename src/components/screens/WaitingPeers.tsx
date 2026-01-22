@@ -18,9 +18,15 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState, onS
     // Generate the URL once
     const url = useMemo(() => createURL(localState.roomName, localState.player.id), [localState]);
 
-    // Dummy list of connected peers
     const connectedPeers = gameState.players.map(x => `${x.name} - ${x.id}`);
     const me = gameState.players.filter(x => x.id == localState.player.id)[0];
+    if (!me) {
+        return (
+            <div>
+                Not ready yet
+            </div>
+        )
+    }
 
     const handleCopyUrl = async () => {
         try {

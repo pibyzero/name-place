@@ -1,5 +1,3 @@
-export type GameScreen = 'home' | 'player-setup' | 'letter-selection' | 'playing' | 'review' | 'results'
-
 export type GameMode = 'classic' | 'timer'
 
 export interface Player {
@@ -13,11 +11,13 @@ export interface PlayerAnswers {
     [category: string]: string
 }
 
-export interface ValidationVote {
-    validatorId: string
-    playerId: string
-    category: string
-    isValid: boolean
+export type AnswersValidity = Record<string, boolean>
+export type PlayersAnswersValidity = Record<string, AnswersValidity>
+
+export interface AnswersReview {
+    reviewer: string
+    // TODO: better name
+    reviews: PlayersAnswersValidity  // playerId -> category answers validity
 }
 
 export interface RoundData {
@@ -25,7 +25,7 @@ export interface RoundData {
     roundNumber: number
     letter?: string
     answers: Record<string, PlayerAnswers> // playerId -> answers
-    validations: ValidationVote[]
+    reviews: AnswersReview[]
     stoppedBy?: string
     stoppedAt?: number
 }
@@ -47,12 +47,9 @@ export interface LocalState {
 export type GameStatus =
     | 'uninitialized'     // Home screen
     | 'waiting-peers'     // Waiting for peers to join
-    | 'start'             // Start the game, starts first round
-    | 'player-setup'      // Setting up players
-    | 'letter-selection'  // Selecting letter for the round
-    | 'round-started'           // Playing the round
-    | 'review'            // Reviewing answers
-    | 'results'           // Showing round results
+    | 'started'           // Start the game, starts first round
+    | 'round-started'     // Playing the round
+    | 'reviewing'         // Reviewing answers
     | 'ended';            // Game ended
 
 // Global game state
@@ -85,6 +82,8 @@ export type GameEventType =
     | 'start-game'
     | 'start-round'
     | 'stop-round'
+    | 'submit-answers'
+    | 'submit-review'
 
 export interface GameEvent {
     type: GameEventType;
@@ -115,11 +114,22 @@ export interface StartRoundEvent extends GameEvent {
 
 export interface StopRoundEvent extends GameEvent {
     type: 'stop-round'
-    payload: StopRoundData
+    payload: AnswersData
 }
 
-export interface StopRoundData {
+export interface SubmitAnswersEvent extends GameEvent {
+    type: 'submit-answers'
+    payload: AnswersData
+}
+
+export interface AnswersData {
     answers: PlayerAnswers  // answers by the player
+    round: number
+    submittedBy: string     // player id
+}
+
+export interface ReviewData {
+    answersReview: AnswersReview  // answers by the player
     round: number
     submittedBy: string     // player id
 }

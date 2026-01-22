@@ -1,4 +1,4 @@
-import { FC, useCallback, useMemo, useState } from 'react'
+import { FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { GameState, PlayerAnswers } from '../../types/game'
@@ -8,13 +8,27 @@ import { GameLayout } from '../ui/GameLayout'
 interface RoundPlayProps {
     gameState: GameState
     onClickStopRound: VoidWithArg<PlayerAnswers>
+    broadcastAnswers: VoidWithArg<PlayerAnswers>
 }
 
 export const RoundPlay: FC<RoundPlayProps> = ({
     gameState,
     onClickStopRound,
+    broadcastAnswers
 }) => {
     const [myAnswers, setMyAnswers] = useState<Record<string, string>>({})
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+
+    useEffect(() => {
+        // If not submitting answers but has been stopped, submit answers
+        console.warn("In effeect after stopped", gameState)
+        if (isSubmitting) return
+        if (!gameState?.roundData?.stoppedBy) return
+        setIsSubmitting(true)
+        console.warn("Submitting answers after round is STOPPED")
+        broadcastAnswers(myAnswers)
+    }, [myAnswers, gameState, isSubmitting])
 
     if (!gameState?.roundData?.letter) {
         return (
@@ -24,10 +38,11 @@ export const RoundPlay: FC<RoundPlayProps> = ({
         )
     }
 
+    // Check if any player has stopped the round
+    const someoneStoppedRound = !!gameState.roundData.stoppedBy;
+
     const letter = gameState.roundData.letter;
 
-    // Check if any player has stopped the round (for display)
-    const someoneStoppedRound = !!gameState.roundData.stoppedBy;
     const stoppedBy = gameState.players.filter(p => p.id == gameState.roundData?.stoppedBy)[0]?.name
     const timeRemaining = 0;  // TODO: get correct value when relevant
     const mode: string = 'classic'
