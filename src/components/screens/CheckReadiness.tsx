@@ -3,7 +3,7 @@ import { GameState, LocalState } from '../../types/game'
 import { GameLayout } from '../ui/GameLayout'
 import { Button } from '../ui/Button'
 import { PlayerStatusCard } from '../ui/PlayerCard'
-import { calculateScores, getLeaderboard } from '../../utils/scoring'
+import { calculateRoundScores, getLeaderboard } from '../../utils/scoring'
 
 
 interface CheckReadinessProps {
@@ -33,7 +33,7 @@ export const CheckReadiness: FC<CheckReadinessProps> = ({
         const lastRound = gameState.allRounds[gameState.allRounds.length - 1];
         const reviews = lastRound?.reviews;
         if (!reviews) return undefined;
-        const scores = calculateScores(lastRound, gameState.categories);
+        const scores = calculateRoundScores(lastRound, gameState.categories);
         return getLeaderboard(scores, gameState.players);
     }, [gameState])
 

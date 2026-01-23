@@ -54,14 +54,16 @@ export type GameStatus =
     | 'reviewing'         // Reviewing answers
     | 'ended';            // Game ended
 
+export type Language = 'english' | 'nepali'
 export interface GameConfig {
-    language: 'english' | 'nepali'
+    language: Language
     maxPlayers: number // min is 3
-    minRounds: number
+    numRounds: number
 }
 
 // Global game state
 export interface GameState {
+    config: GameConfig
     status: GameStatus
     mode: GameMode
     players: Player[]
@@ -82,6 +84,7 @@ export interface RoundResult {
 
 export type GameEventType =
     'add-player'
+    | 'init-game'
     | 'set-waiting-peers'
     | 'wait-round-readiness'
     | 'submit-round-readiness'
@@ -105,6 +108,11 @@ export interface SubmitRoundReadinessData {
 export interface AddPlayer extends GameEvent {
     type: 'add-player';
     payload: Player;
+}
+
+export interface InitGameEvent extends GameEvent {
+    type: 'init-game'
+    payload: GameConfig
 }
 
 export interface SetWaitingPeers extends GameEvent {

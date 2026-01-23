@@ -22,11 +22,9 @@ export const RoundPlay: FC<RoundPlayProps> = ({
 
     useEffect(() => {
         // If not submitting answers but has been stopped, submit answers
-        console.warn("In effeect after stopped", gameState)
         if (isSubmitting) return
         if (!gameState?.roundData?.stoppedBy) return
         setIsSubmitting(true)
-        console.warn("Submitting answers after round is STOPPED")
         broadcastAnswers(myAnswers)
     }, [myAnswers, gameState, isSubmitting])
 

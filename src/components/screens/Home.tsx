@@ -2,9 +2,11 @@ import { FC, useState } from 'react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { GameLayout } from '../ui/GameLayout';
+import { GameConfig, Language } from '../../types/game';
+
 
 interface HomeProps {
-    onInit: (playerName: string) => void
+    onInit: (playerName: string, config: GameConfig) => void
     roomName: string | undefined;
 }
 
@@ -12,14 +14,22 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
     const [playerName, setPlayerName] = useState('')
     const [isLoading, setIsLoading] = useState(false);
 
+    const [showConfig, setShowConfig] = useState(false);
+    const [maxPlayers, setMaxPlayers] = useState(4);
+    const [numRounds, setNumRounds] = useState(5);
+    const [language, setLanguage] = useState<Language>('english');
+
     const handleStart = () => {
         let trimmed = playerName.trim()
         if (isLoading || !trimmed) return;
-
         setIsLoading(true);
-        onStart(trimmed);
+
+        const config: GameConfig = { maxPlayers, language, numRounds }
+
+        onStart(trimmed, config);
         setIsLoading(false);
     }
+
     return (
         <GameLayout maxWidth="sm" centerVertically>
             <div className="w-full space-y-12">
@@ -29,7 +39,6 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                     <h2 className="text-3xl font-bold text-teal">Animal Thing</h2>
                     <p className="mt-4 text-gray-600 text-sm">The classic word game with friends</p>
                 </div>
-
                 {/* Form Card */}
                 <div className="space-y-6 bg-white bg-opacity-40 rounded-xl p-8">
                     {roomName && (
@@ -48,6 +57,57 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                         onKeyDown={(e) => e.key === 'Enter' && handleStart()}
                         autoFocus
                     />
+
+                    {!roomName && (
+                        <div>
+                            <button
+                                type="button"
+                                onClick={() => setShowConfig(!showConfig)}
+                                className="flex items-center gap-2 text-sm text-gray-600 hover:text-teal font-medium mb-2 focus:outline-none"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={2}
+                                    stroke="currentColor"
+                                    className={`w-4 h-4 transition-transform ${showConfig ? 'rotate-180' : ''}`}
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                </svg>
+                                Game Settings
+                            </button>
+
+                            {showConfig && (
+                                <div className="grid grid-cols-2 gap-4 p-4 bg-white bg-opacity-50 rounded-lg animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <Input
+                                        label="Max Players"
+                                        type="number"
+                                        min={2}
+                                        max={20}
+                                        value={maxPlayers}
+                                        onChange={(e) => setMaxPlayers(Number(e.target.value))}
+                                    />
+
+                                    {/* Manual styling for Select to match existing Input style */}
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-sm font-medium text-gray-700">
+                                            Language
+                                        </label>
+                                        <select
+                                            value={language}
+                                            onChange={(e) => setLanguage(e.target.value as Language)}
+                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
+                                        >
+                                            <option value="english">English</option>
+                                            <option value="nepali">Nepali</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <Button
                         onClick={handleStart}
                         disabled={!playerName.trim()}
@@ -58,7 +118,6 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                         {!roomName ? "Create a New Game" : "Join Game"}
                     </Button>
                 </div>
-
                 {/* Instructions */}
                 {!roomName && (
                     <div className="text-center space-y-4 text-sm text-gray-600">

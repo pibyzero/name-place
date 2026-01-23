@@ -3,13 +3,13 @@
  * Rule: 1 point per category if valid votes > invalid votes, otherwise 0
  */
 
-import { RoundData } from "../types/game";
+import { AnswersReview, Player, RoundData } from "../types/game";
 
 interface PlayerScores {
     [playerId: string]: { total: number; byCategory: { [category: string]: number } };
 }
 
-export function calculateScores(roundData: RoundData, categories: string[]): PlayerScores {
+export function calculateRoundScores(roundData: RoundData, categories: string[]): PlayerScores {
     const { answers, reviews } = roundData;
     const playerIds = Object.keys(answers);
     const playerScores: PlayerScores = {};
@@ -18,7 +18,7 @@ export function calculateScores(roundData: RoundData, categories: string[]): Pla
         const byCategory = categories.reduce((acc, category) => {
             const answer = answers[playerId]?.[category];
             const hasAnswer = answer?.trim();
-            acc[category] = hasAnswer && isValid(playerId, category, reviews) ? 1 : 0;
+            acc[category] = hasAnswer && isAnswerValid(playerId, category, reviews) ? 1 : 0;
             return acc;
         }, {} as { [category: string]: number });
 
@@ -29,7 +29,7 @@ export function calculateScores(roundData: RoundData, categories: string[]): Pla
     return playerScores;
 }
 
-function isValid(playerId: string, category: string, reviews: Record<string, AnswersReview>): boolean {
+export function isAnswerValid(playerId: string, category: string, reviews: Record<string, AnswersReview>): boolean {
     const votes = Object.values(reviews)
         .filter(r => r.reviewer !== playerId)
         .map(r => r.reviews[playerId]?.[category])
@@ -45,7 +45,7 @@ export function calculateCumulativeScores(rounds: RoundData[], categories: strin
     const cumulative: PlayerScores = {};
 
     rounds.forEach(round => {
-        const playerScores = calculateScores(round, categories);
+        const playerScores = calculateRoundScores(round, categories);
 
         Object.entries(playerScores).forEach(([pid, scores]) => {
             if (!cumulative[pid]) cumulative[pid] = { total: 0, byCategory: {} };

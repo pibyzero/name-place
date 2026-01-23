@@ -1,7 +1,7 @@
 import { FC } from 'react'
-import { Player, PlayerAnswers, ValidationVote } from '../../types/game'
+import { Player, PlayerAnswers } from '../../types/game'
 import { Button } from '../ui/Button'
-import { calculateRoundScores, getPlayerScores, isAnswerValid } from '../../utils/scoring'
+import { calculateRoundScores, isAnswerValid } from '../../utils/scoring'
 
 interface LeaderboardProps {
     players: Player[]

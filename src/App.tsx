@@ -5,12 +5,12 @@ import { RoundPlay } from './components/screens/Round'
 import { ReviewPhase } from './components/screens/ReviewPhase'
 import { Leaderboard } from './components/screens/Leaderboard'
 import { CheckReadiness } from './components/screens/CheckReadiness'
-import { useCallback, useEffect, } from 'react'
+import { useCallback, useEffect, useState, } from 'react'
 import { WaitingPeers } from './components/screens/WaitingPeers'
 import { getSeedPeerFromURL } from './utils/p2p'
 import { useP2P } from './hooks/useP2p'
 import { DataConnection } from 'peerjs'
-import { PlayerAnswers, AnswersData, AnswersReview, ReviewData, SubmitRoundReadinessData } from './types/game'
+import { PlayerAnswers, AnswersData, AnswersReview, ReviewData, SubmitRoundReadinessData, GameConfig } from './types/game'
 
 function getRoomFromURL() {
     const hash = window.location.hash;
@@ -33,6 +33,7 @@ const RAND_LEN = 1; // 5
 function App() {
     const { gameState, actions: game } = useGameState()
     const p2p = useP2P();
+    const [config, setConfig] = useState<GameConfig>();
 
     useEffect(() => {
         let roomName = getRoomFromURL()
@@ -68,12 +69,13 @@ function App() {
         return () => clearInterval(intervalId); // Cleanup on unmount
     }, [p2p.allGameEvents, p2p.actions]);
 
-    const onInit = useCallback((name: string) => {
+    const onInit = useCallback((name: string, config: GameConfig) => {
         if (p2p.isInitialized) return;
         let seedPeer = getSeedPeerFromURL();
         let roomName = p2p.state.roomName || generateRoomName();
         const id = `${roomName}-${Math.random().toString(16).slice(2, 2 + RAND_LEN)}`;
         p2p.initialize(roomName, id, name, seedPeer)
+        setConfig(config)
     }, [])
 
     // If p2p initializsed and is not a jost, do a join handshake
@@ -89,11 +91,21 @@ function App() {
 
     useEffect(() => {
         if (!p2p.isInitialized || gameState.status != 'uninitialized') return
+        if (!config) {
+            console.warn("No game config found. Not initializing")
+            return
+        }
         const evAddPlayer = p2p.create.addPlayerEvent(p2p.state.player)
         const evWaiting = p2p.create.setWaitingPeersEvent()
         const events = [evAddPlayer, evWaiting]
         game.applyEvents(events)
-    }, [p2p.isInitialized])
+
+        // if host, init game
+        if (p2p.state.player.isHost) {
+            const evInitGame = p2p.create.initGameEvent(config)
+            game.applyEvent(evInitGame)
+        }
+    }, [p2p.isInitialized, config])
 
     const onStartGame = useCallback(() => {
         let playerIndex = 0; // Game always starts with zero indexed player and everyone takes turn

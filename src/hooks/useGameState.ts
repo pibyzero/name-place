@@ -18,6 +18,11 @@ const initialState: GameState = {
     roundData: null,
     allRounds: [],
     timeRemaining: TIMER_DURATION,
+    config: {
+        numRounds: 5,
+        maxPlayers: 4,
+        language: 'english'
+    },
 }
 
 export interface GameActions {
@@ -40,6 +45,22 @@ export const useGameState = () => {
             setGameState(prev => ({ ...prev, players: dedupedPlayers }));
         }
     }, [gameState.players]);
+
+    const handleInitGame = useCallback((ev: GameEvent) => {
+        setGameState(prev => {
+            // TODO: this is a hack, it should only be 'uninitialized', but ordering is not maintained so there's some issue
+            if (!['uninitialized', 'waiting-peers'].includes(prev.status)) {
+                console.warn("Initing uninitialized game")
+                return prev
+            }
+            console.warn("APPLYING config", ev.payload)
+            return {
+                ...prev,
+                status: 'waiting-peers',
+                config: ev.payload
+            }
+        })
+    }, [])
 
     const handleAddPlayer = useCallback((ev: GameEvent) => {
         setGameState(prev => {
@@ -209,6 +230,9 @@ export const useGameState = () => {
 
     const applyEvent = useCallback((ev: GameEvent) => {
         switch (ev.type) {
+            case 'init-game':
+                handleInitGame(ev)
+                break;
             case 'add-player':
                 handleAddPlayer(ev)
                 break;
@@ -234,7 +258,17 @@ export const useGameState = () => {
                 handleSubmitReview(ev)
                 break;
         }
-    }, [handleAddPlayer, handleSetWaitingPeers, handleWaitReadiness, handleStartRound, handleStopRound, handleSubmitAnswers, handleSubmitReview, handleSubmitRoundReadiness])
+    }, [
+        handleAddPlayer,
+        handleSetWaitingPeers,
+        handleWaitReadiness,
+        handleStartRound,
+        handleStopRound,
+        handleSubmitAnswers,
+        handleSubmitReview,
+        handleSubmitRoundReadiness,
+        handleInitGame,
+    ])
 
     const applyEvents = useCallback((evs: GameEvent[]) => {
         evs.forEach(applyEvent)

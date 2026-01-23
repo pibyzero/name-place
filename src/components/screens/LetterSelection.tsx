@@ -1,5 +1,5 @@
-import { FC, useCallback } from 'react'
-import { ALPHABET } from '../../utils/constants'
+import { FC, useCallback, useMemo } from 'react'
+import { getAlphabet } from '../../utils/constants'
 import { GameState, LocalState } from '../../types/game'
 import { GameLayout } from '../ui/GameLayout'
 import { Button } from '../ui/Button'
@@ -33,6 +33,9 @@ export const LetterSelection: FC<LetterSelectionProps> = ({
     }
 
     let isMyTurn = gameState.players.some((p, i) => p.id == localState.player.id && i == roundData.turnPlayerIndex);
+    let alphabet = useMemo(() => {
+        return getAlphabet(gameState.config.language)
+    }, [gameState])
 
     if (!isMyTurn) {
         const turnPlayer = gameState.players[roundData.turnPlayerIndex];
@@ -65,7 +68,7 @@ export const LetterSelection: FC<LetterSelectionProps> = ({
                     Choose a letter. It's your turn!
                 </h2>
                 <div className="grid grid-cols-6 md:grid-cols-7 gap-3 p-6 bg-white bg-opacity-40 rounded-xl">
-                    {ALPHABET.map((letter) => (
+                    {alphabet.map((letter) => (
                         <Button
                             key={letter}
                             onClick={() => onSelectLetter(letter)}
