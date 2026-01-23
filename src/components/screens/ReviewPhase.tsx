@@ -2,6 +2,7 @@ import { FC, useCallback, useState } from 'react'
 import { AnswersReview as RoundAnswersReview, GameState, LocalState, PlayersAnswersValidity } from '../../types/game'
 import { Button } from '../ui/Button'
 import { VoidWithArg } from '../../types/common'
+import { PlayerStatusCard } from '../ui/PlayerCard'
 
 interface ReviewPhaseProps {
     localState: LocalState
@@ -85,6 +86,24 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
         return plreview[category]
     }, [reviews])
 
+    const submittedCount = reviewsSubmitted.length
+    const totalPlayers = gameState.players.length
+    const allReviewsSubmitted = submittedCount === totalPlayers
+
+    // Sort players: submitted first, then current user, then others
+    const sortedPlayers = [...gameState.players].sort((a, b) => {
+        const aSubmitted = reviewsSubmitted.includes(a.id)
+        const bSubmitted = reviewsSubmitted.includes(b.id)
+        const aIsCurrent = a.id === localState.player.id
+        const bIsCurrent = b.id === localState.player.id
+
+        if (!hasSubmitted && aIsCurrent) return -1
+        if (!hasSubmitted && bIsCurrent) return 1
+        if (aSubmitted && !bSubmitted) return -1
+        if (!aSubmitted && bSubmitted) return 1
+        return 0
+    })
+
     return (
         <div className="min-h-screen p-4 md:p-6">
             <div className="max-w-7xl mx-auto space-y-8">
@@ -92,45 +111,27 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                 <div className="text-center">
                     <h2 className="text-2xl font-bold mb-2">Review Phase - Round {gameState.currentRound}</h2>
                     <p className="text-lg text-gray-700">Letter: <span className="font-bold text-coral">{gameState.roundData?.letter}</span></p>
-                    <div className="mt-4 flex flex-wrap justify-center gap-2">
-                        {gameState.players.map(player => (
-                            <span
-                                key={player.id}
-                                className={`text-sm px-3 py-1.5 rounded-full ${reviewsSubmitted.includes(player.id)
-                                    ? 'bg-green-200 text-green-800 font-medium'
-                                    : 'bg-white bg-opacity-60 text-gray-600'
-                                    }`}
-                            >
-                                {player.name} {reviewsSubmitted.includes(player.id) ? '✓' : '⏳'}
-                            </span>
-                        ))}
-                    </div>
                 </div>
-
-                {/* Player Selector
-                <div className="border-b border-gray-300 pb-4">
-                    <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Reviewing as</h3>
-                    <PlayerTabs
-                        players={players}
-                        currentPlayerId={currentPlayerId}
-                        onSelectPlayer={onSelectPlayer}
-                        showStatus={true}
-                        submittedPlayers={reviewsSubmitted}
-                    />
-                </div>
-                */}
 
                 {/* Review Interface - Matrix View */}
                 <div className="overflow-x-auto">
                     {hasSubmitted ? (
                         <>
-                            <div className="text-center mb-4 p-4 bg-green-100 rounded-lg">
-                                <p className="text-xl font-semibold text-green-700">
-                                    ✓ {currentPlayer?.name}'s review submitted!
-                                </p>
-                                <p className="text-gray-600 text-sm">
-                                    Your votes are shown below (read-only)
-                                </p>
+                            <div className="text-center mb-6 space-y-4">
+                                {allReviewsSubmitted ? (
+                                    <>
+                                        <div className="text-6xl animate-bounce">✓</div>
+                                        <p className="text-2xl font-bold text-green-700">
+                                            All reviews submitted!
+                                        </p>
+                                        <p className="text-gray-600">
+                                            Calculating scores...
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                    </>
+                                )}
                             </div>
 
                             {/* Show submitted review in read-only mode */}
@@ -207,10 +208,6 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                         })}
                                     </tbody>
                                 </table>
-                            </div>
-
-                            <div className="text-center mt-4 text-sm text-gray-600">
-                                <p>Waiting for other players to finish reviewing...</p>
                             </div>
                         </>
                     ) : nonEmptyCount === 0 ? (
@@ -361,9 +358,24 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-coral"></div>
                         </div>
                         <h3 className="text-2xl font-bold mb-2">Review Submitted!</h3>
-                        <p className="text-gray-600">
+                        <p className="text-gray-600 mb-6 space-y-4">
                             Waiting for all players to submit their reviews...
                         </p>
+                        <p className="text-gray-600 mb-6 space-y-4">
+                            {submittedCount} of {totalPlayers} {totalPlayers === 1 ? 'player has' : 'players have'} submitted
+                        </p>
+
+                        <div className="space-y-3 max-w-md mx-auto mb-6">
+                            {sortedPlayers.map(player => (
+                                <PlayerStatusCard
+                                    key={player.id}
+                                    player={player}
+                                    isChecked={reviewsSubmitted.includes(player.id)}
+                                    isCurrentUser={player.id === localState.player.id}
+                                />
+                            ))}
+                        </div>
+
                     </div>
                 </div>
             )}

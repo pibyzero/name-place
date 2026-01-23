@@ -184,14 +184,15 @@ export const useGameState = () => {
             const newReviews = { ...prev.roundData.reviews, [reviewData.submittedBy]: reviewData.answersReview }
 
             if (Object.keys(newReviews).length === prev.players.length) {
+                const nextRound = prev.currentRound + 1
                 return {
                     ...prev,
                     status: 'waiting-readiness',
-                    currentRound: prev.currentRound + 1,
+                    currentRound: nextRound,
                     allRounds: [...prev.allRounds, { ...prev.roundData, reviews: newReviews }],
                     roundData: {
                         turnPlayerIndex: (prev.roundData.turnPlayerIndex + 1) % prev.players.length,
-                        roundNumber: prev.currentRound + 1,
+                        roundNumber: nextRound,
                         answers: {},
                         reviews: {},
                         readyPlayers: new Set()

@@ -1,16 +1,18 @@
-import { FC } from 'react'
+import { FC, useMemo } from 'react'
 import { GameState, LocalState } from '../../types/game'
 import { GameLayout } from '../ui/GameLayout'
 import { Button } from '../ui/Button'
+import { PlayerStatusCard } from '../ui/PlayerCard'
+import { calculateScores, getLeaderboard } from '../../utils/scoring'
 
 
-interface ReadinessCheckProps {
+interface CheckReadinessProps {
     localState: LocalState
     gameState: GameState
     onReady: () => void
 }
 
-export const CheckReadiness: FC<ReadinessCheckProps> = ({
+export const CheckReadiness: FC<CheckReadinessProps> = ({
     localState,
     gameState,
     onReady
@@ -26,6 +28,14 @@ export const CheckReadiness: FC<ReadinessCheckProps> = ({
             </GameLayout>
         )
     }
+
+    const lastRoundLeaderboard = useMemo(() => {
+        const lastRound = gameState.allRounds[gameState.allRounds.length - 1];
+        const reviews = lastRound?.reviews;
+        if (!reviews) return undefined;
+        const scores = calculateScores(lastRound, gameState.categories);
+        return getLeaderboard(scores, gameState.players);
+    }, [gameState])
 
     const isReady = roundData.readyPlayers.has(localState.player.id)
     const readyCount = roundData.readyPlayers.size
@@ -57,9 +67,41 @@ export const CheckReadiness: FC<ReadinessCheckProps> = ({
                 centerVertically
             >
                 <div className="w-full space-y-8">
+                    {lastRoundLeaderboard && (
+                        <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
+                            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
+                                Round {gameState.currentRound - 1} Results
+                            </h3>
+                            <div className="space-y-2">
+                                {lastRoundLeaderboard.map((entry, index) => (
+                                    <div
+                                        key={entry.playerId}
+                                        className={`flex items-center justify-between p-3 rounded-lg ${entry.playerId === localState.player.id
+                                            ? 'bg-coral bg-opacity-10 border-2 border-coral'
+                                            : 'bg-gray-50'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-lg font-bold text-gray-400 w-6">
+                                                {index + 1}
+                                            </span>
+                                            <span className="font-medium text-gray-800">
+                                                {entry.name}
+                                                {index === 0 && " ★"}
+                                            </span>
+                                        </div>
+                                        <span className="text-lg font-bold text-coral">
+                                            {entry.total} {entry.total === 1 ? 'pt' : 'pts'}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="text-center space-y-3">
                         <h2 className="text-4xl font-bold text-gray-800">
-                            Ready for round {gameState.roundData?.roundNumber} ?
+                            Ready for Round {gameState.roundData?.roundNumber}?
                         </h2>
                         {readyCount > 0 && (
                             <p className="text-gray-600">
@@ -82,7 +124,7 @@ export const CheckReadiness: FC<ReadinessCheckProps> = ({
                             <PlayerStatusCard
                                 key={player.id}
                                 player={player}
-                                isReady={roundData.readyPlayers.has(player.id)}
+                                isChecked={roundData.readyPlayers.has(player.id)}
                                 isCurrentUser={player.id === localState.player.id}
                             />
                         ))}
@@ -106,6 +148,37 @@ export const CheckReadiness: FC<ReadinessCheckProps> = ({
             centerVertically
         >
             <div className="w-full space-y-8">
+                {lastRoundLeaderboard && (
+                    <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
+                            Last Round Results
+                        </h3>
+                        <div className="space-y-2">
+                            {lastRoundLeaderboard.map((entry, index) => (
+                                <div
+                                    key={entry.playerId}
+                                    className={`flex items-center justify-between p-3 rounded-lg ${entry.playerId === localState.player.id
+                                        ? 'bg-coral bg-opacity-10 border-2 border-coral'
+                                        : 'bg-gray-50'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-lg font-bold text-gray-400 w-6">
+                                            {index + 1}
+                                        </span>
+                                        <span className="font-medium text-gray-800">
+                                            {entry.name}
+                                        </span>
+                                    </div>
+                                    <span className="text-lg font-bold text-coral">
+                                        {entry.total} {entry.total === 1 ? 'pt' : 'pts'}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="text-center space-y-4">
                     {allReady ? (
                         <>
@@ -132,7 +205,7 @@ export const CheckReadiness: FC<ReadinessCheckProps> = ({
                         <PlayerStatusCard
                             key={player.id}
                             player={player}
-                            isReady={roundData.readyPlayers.has(player.id)}
+                            isChecked={roundData.readyPlayers.has(player.id)}
                             isCurrentUser={player.id === localState.player.id}
                         />
                     ))}
@@ -147,38 +220,3 @@ export const CheckReadiness: FC<ReadinessCheckProps> = ({
         </GameLayout>
     )
 }
-
-const PlayerStatusCard: FC<{
-    player: { id: string; name: string; isHost?: boolean }
-    isReady: boolean
-    isCurrentUser: boolean
-}> = ({ player, isReady, isCurrentUser }) => (
-    <div
-        className={`
-            relative p-4 rounded-lg border-2 transition-all
-            ${isReady
-                ? 'bg-green-50 border-green-400'
-                : 'bg-white bg-opacity-40 border-gray-300'
-            }
-            ${isCurrentUser ? 'ring-2 ring-coral ring-offset-2' : ''}
-        `}
-    >
-        <div className="flex items-center justify-between gap-3">
-            <div className="flex-1">
-                <p className={`font-semibold ${isReady ? 'text-green-800' : 'text-gray-700'}`}>
-                    {player.name}
-                    {isCurrentUser && <span className="ml-2 text-xs text-coral">(You)</span>}
-                    {player.isHost && <span className="ml-2 text-xs text-purple-600">★ Host</span>}
-                </p>
-            </div>
-            <div className="flex-shrink-0">
-                {isReady ? (
-                    <span className="text-2xl">✓</span>
-                ) : (
-                    <span className="text-gray-400 text-xl animate-pulse">○</span>
-                )}
-            </div>
-        </div>
-    </div>
-)
-

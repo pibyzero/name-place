@@ -1,115 +1,71 @@
-import { PlayerAnswers, ValidationVote, PlayerScore } from '../types/game'
-import { POINTS_UNIQUE, POINTS_DUPLICATE } from './constants'
+/**
+ * Calculates scores for players
+ * Rule: 1 point per category if valid votes > invalid votes, otherwise 0
+ */
 
-// Normalize answer for comparison (lowercase, trim)
-export const normalizeAnswer = (answer: string): string => {
-    return answer.toLowerCase().trim()
+import { RoundData } from "../types/game";
+
+interface PlayerScores {
+    [playerId: string]: { total: number; byCategory: { [category: string]: number } };
 }
 
-// Find duplicate answers across players for a category
-export const findDuplicateAnswers = (
-    answers: Map<string, PlayerAnswers>,
-    category: string
-): Set<string> => {
-    const normalizedAnswers = new Map<string, string[]>() // normalized answer -> playerIds
-    const duplicatePlayers = new Set<string>()
+export function calculateScores(roundData: RoundData, categories: string[]): PlayerScores {
+    const { answers, reviews } = roundData;
+    const playerIds = Object.keys(answers);
+    const playerScores: PlayerScores = {};
 
-    answers.forEach((playerAnswers, playerId) => {
-        const answer = playerAnswers[category]
-        if (!answer || !answer.trim()) return
+    playerIds.forEach(playerId => {
+        const byCategory = categories.reduce((acc, category) => {
+            const answer = answers[playerId]?.[category];
+            const hasAnswer = answer?.trim();
+            acc[category] = hasAnswer && isValid(playerId, category, reviews) ? 1 : 0;
+            return acc;
+        }, {} as { [category: string]: number });
 
-        const normalized = normalizeAnswer(answer)
-        if (!normalizedAnswers.has(normalized)) {
-            normalizedAnswers.set(normalized, [])
-        }
-        normalizedAnswers.get(normalized)!.push(playerId)
-    })
+        const total = Object.values(byCategory).reduce((sum, score) => sum + score, 0);
+        playerScores[playerId] = { total, byCategory };
+    });
 
-    // Mark all players with duplicate answers
-    normalizedAnswers.forEach((playerIds) => {
-        if (playerIds.length > 1) {
-            playerIds.forEach(id => duplicatePlayers.add(id))
-        }
-    })
-
-    return duplicatePlayers
+    return playerScores;
 }
 
-// Check if an answer is valid based on majority vote
-export const isAnswerValid = (
-    validations: ValidationVote[],
-    playerId: string,
-    category: string,
-    answer?: string
-): boolean => {
-    // Empty answers are always invalid (0 points)
-    if (!answer || !answer.trim()) return false
+function isValid(playerId: string, category: string, reviews: Record<string, AnswersReview>): boolean {
+    const votes = Object.values(reviews)
+        .filter(r => r.reviewer !== playerId)
+        .map(r => r.reviews[playerId]?.[category])
+        .filter(v => v !== undefined);
 
-    const relevantVotes = validations.filter(
-        v => v.playerId === playerId && v.category === category
-    )
+    if (votes.length === 0) return false;
 
-    if (relevantVotes.length === 0) return true // Default to valid if no votes
-
-    const validCount = relevantVotes.filter(v => v.isValid).length
-    const invalidCount = relevantVotes.filter(v => !v.isValid).length
-
-    // Majority wins, tie defaults to valid
-    return validCount >= invalidCount
+    const validCount = votes.filter(v => v === true).length;
+    return validCount > votes.length - validCount;
 }
 
-// Calculate scores for all players in a round
-export const calculateRoundScores = (
-    answers: Map<string, PlayerAnswers>,
-    validations: ValidationVote[],
-    categories: string[]
-): Map<string, number> => {
-    const scores = new Map<string, number>()
+export function calculateCumulativeScores(rounds: RoundData[], categories: string[]): PlayerScores {
+    const cumulative: PlayerScores = {};
 
-    // Initialize scores
-    answers.forEach((_, playerId) => {
-        scores.set(playerId, 0)
-    })
+    rounds.forEach(round => {
+        const playerScores = calculateScores(round, categories);
 
-    // Calculate score for each category
-    categories.forEach(category => {
-        const duplicatePlayers = findDuplicateAnswers(answers, category)
+        Object.entries(playerScores).forEach(([pid, scores]) => {
+            if (!cumulative[pid]) cumulative[pid] = { total: 0, byCategory: {} };
+            cumulative[pid].total += scores.total;
 
-        answers.forEach((playerAnswers, playerId) => {
-            const answer = playerAnswers[category]
+            categories.forEach(cat => {
+                cumulative[pid].byCategory[cat] = (cumulative[pid].byCategory[cat] || 0) + scores.byCategory[cat];
+            });
+        });
+    });
 
-            // Empty answer = 0 points
-            if (!answer || !answer.trim()) {
-                return
-            }
-
-            // Invalid answer = 0 points
-            if (!isAnswerValid(validations, playerId, category, answer)) {
-                return
-            }
-
-            // Valid answer - check if duplicate
-            const isDuplicate = duplicatePlayers.has(playerId)
-            const points = isDuplicate ? POINTS_DUPLICATE : POINTS_UNIQUE
-
-            scores.set(playerId, (scores.get(playerId) || 0) + points)
-        })
-    })
-
-    return scores
+    return cumulative;
 }
 
-// Get player scores sorted by round score (for leaderboard)
-export const getPlayerScores = (
-    players: { id: string; name: string }[],
-    roundScores: Map<string, number>,
-    totalScores: Map<string, number>
-): PlayerScore[] => {
-    return players
-        .map(player => ({
-            playerId: player.id,
-            roundScore: roundScores.get(player.id) || 0,
-            totalScore: totalScores.get(player.id) || 0
+export function getLeaderboard(playerScores: PlayerScores, players: Player[]) {
+    return Object.entries(playerScores)
+        .map(([playerId, scores]) => ({
+            playerId,
+            name: players.find(p => p.id === playerId)?.name || 'Unknown',
+            ...scores
         }))
-        .sort((a, b) => b.roundScore - a.roundScore)
+        .sort((a, b) => b.total - a.total);
 }
