@@ -4,7 +4,8 @@ import {
     GameEvent,
     AnswersData,
     GameStatus,
-    ReviewData
+    ReviewData,
+    SubmitRoundReadinessData
 } from '../types/game'
 import { DEFAULT_CATEGORIES, TIMER_DURATION } from '../utils/constants'
 
@@ -54,26 +55,57 @@ export const useGameState = () => {
         })
     }, [])
 
-    const handleSetWaitingStatus = useCallback(() => {
+    const handleSetWaitingPeers = useCallback(() => {
         setGameState(prev => ({ ...prev, status: 'waiting-peers' }))
     }, [])
 
-    const handleStartGame = useCallback((ev: GameEvent) => {
+    const handleWaitReadiness = useCallback((ev: GameEvent) => {
         setGameState(prev => ({
             ...prev,
-            status: 'started',
+            status: 'waiting-readiness',
             roundData: {
                 turnPlayerIndex: ev.payload,
                 roundNumber: prev.currentRound,
                 answers: {},
                 reviews: {},
+                readyPlayers: new Set()
             }
         }))
     }, [])
 
+    const handleSubmitRoundReadiness = useCallback((ev: GameEvent) => {
+        setGameState(prev => {
+            let data = ev.payload as SubmitRoundReadinessData
+            if (prev.status !== 'waiting-readiness') {
+                console.warn("Received round readiness status when game is not waiing for readiness. ignoring")
+                return prev
+            }
+            if (!prev.roundData) {
+                console.warn("Invalid state of game: roundData not present. aborting event")
+                return prev
+            }
+            let rd = prev.roundData
+            let readyPlayers = rd?.readyPlayers
+            readyPlayers?.add(data.submittedBy)
+            let st = prev.status as GameStatus
+            if (readyPlayers?.size == prev.players.length) {
+                st = 'round-ready'
+            }
+            return {
+                ...prev,
+                status: st,
+                roundData: {
+                    ...prev.roundData,
+                    readyPlayers
+                }
+            }
+        })
+    }, [])
+
     const handleStartRound = useCallback((ev: GameEvent) => {
         setGameState(prev => {
-            const validPrevStates: GameStatus[] = ['started'];
+            // TODO: strictly speaking the `round-ready` is the only valid status, but this needs more thought
+            const validPrevStates: GameStatus[] = ['waiting-readiness', 'round-ready'];
             if (!validPrevStates.includes(prev.status)) {
                 console.warn(`Received start round when the game state is ${prev.status}. Ignoring`)
                 return prev
@@ -154,7 +186,7 @@ export const useGameState = () => {
             if (Object.keys(newReviews).length === prev.players.length) {
                 return {
                     ...prev,
-                    status: 'started',
+                    status: 'waiting-readiness',
                     currentRound: prev.currentRound + 1,
                     allRounds: [...prev.allRounds, { ...prev.roundData, reviews: newReviews }],
                     roundData: {
@@ -162,6 +194,7 @@ export const useGameState = () => {
                         roundNumber: prev.currentRound + 1,
                         answers: {},
                         reviews: {},
+                        readyPlayers: new Set()
                     }
                 }
             }
@@ -178,11 +211,14 @@ export const useGameState = () => {
             case 'add-player':
                 handleAddPlayer(ev)
                 break;
-            case 'set-waiting-status':
-                handleSetWaitingStatus()
+            case 'set-waiting-peers':
+                handleSetWaitingPeers()
                 break;
-            case 'start-game':
-                handleStartGame(ev)
+            case 'wait-round-readiness':
+                handleWaitReadiness(ev)
+                break;
+            case 'submit-round-readiness':
+                handleSubmitRoundReadiness(ev)
                 break;
             case 'start-round':
                 handleStartRound(ev)
@@ -197,7 +233,7 @@ export const useGameState = () => {
                 handleSubmitReview(ev)
                 break;
         }
-    }, [handleAddPlayer, handleSetWaitingStatus, handleStartGame, handleStartRound, handleStopRound, handleSubmitAnswers, handleSubmitReview])
+    }, [handleAddPlayer, handleSetWaitingPeers, handleWaitReadiness, handleStartRound, handleStopRound, handleSubmitAnswers, handleSubmitReview, handleSubmitRoundReadiness])
 
     const applyEvents = useCallback((evs: GameEvent[]) => {
         evs.forEach(applyEvent)

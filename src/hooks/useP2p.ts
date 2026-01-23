@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { GameEvent, GameEventType, LocalState, Player, AnswersData, ReviewData } from "../types/game"
+import { GameEvent, GameEventType, LocalState, Player, AnswersData, ReviewData, SubmitRoundReadinessData } from "../types/game"
 import Peer, { DataConnection } from "peerjs";
 import { VoidWithArg } from "../types/common";
 import { P2PMessage, PeerInfo } from "../types/p2p";
@@ -185,8 +185,9 @@ export function useP2P() {
         },
         create: {
             addPlayerEvent: (player: Player) => createGameEvent('add-player', player),
-            setWaitingEvent: () => createGameEvent('set-waiting-status', undefined),
-            startGameEvent: (playerIdx: number) => createGameEvent('start-game', playerIdx),
+            setWaitingPeersEvent: () => createGameEvent('set-waiting-peers', undefined),
+            waitRoundReadinessEvent: (playerIdx: number) => createGameEvent('wait-round-readiness', playerIdx),
+            submitRoundReadinessEvent: (data: SubmitRoundReadinessData) => createGameEvent('submit-round-readiness', data),
             startRoundEvent: (data: string) => createGameEvent('start-round', data),
             stopRoundEvent: (data: AnswersData) => createGameEvent('stop-round', data),
             submitAnswersEvent: (data: AnswersData) => createGameEvent('submit-answers', data),

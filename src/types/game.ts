@@ -28,6 +28,7 @@ export interface RoundData {
     reviews: Record<string, AnswersReview>
     stoppedBy?: string
     stoppedAt?: number
+    readyPlayers: Set<string>
 }
 
 export interface PlayerScore {
@@ -47,7 +48,8 @@ export interface LocalState {
 export type GameStatus =
     | 'uninitialized'     // Home screen
     | 'waiting-peers'     // Waiting for peers to join
-    | 'started'           // Start the game, starts first round
+    | 'waiting-readiness' // Wait for readiness
+    | 'round-ready'       // all players are ready for the round
     | 'round-started'     // Playing the round
     | 'reviewing'         // Reviewing answers
     | 'ended';            // Game ended
@@ -80,8 +82,9 @@ export interface RoundResult {
 
 export type GameEventType =
     'add-player'
-    | 'set-waiting-status'
-    | 'start-game'
+    | 'set-waiting-peers'
+    | 'wait-round-readiness'
+    | 'submit-round-readiness'
     | 'start-round'
     | 'stop-round'
     | 'submit-answers'
@@ -94,19 +97,29 @@ export interface GameEvent {
     payload: any;
 }
 
+export interface SubmitRoundReadinessData {
+    ready: boolean
+    submittedBy: string
+}
+
 export interface AddPlayer extends GameEvent {
     type: 'add-player';
     payload: Player;
 }
 
-export interface SetWaitingStatus extends GameEvent {
-    type: 'set-waiting-status';
+export interface SetWaitingPeers extends GameEvent {
+    type: 'set-waiting-peers';
     payload: undefined;
 }
 
-export interface StartGameEvent extends GameEvent {
-    type: 'start-game';
+export interface WaitRoundReadinessEvent extends GameEvent {
+    type: 'wait-round-readiness';
     payload: number; // starting playerIndex
+}
+
+export interface SubmitRoundReadinessEvent extends GameEvent {
+    type: 'submit-round-readiness'
+    payload: SubmitRoundReadinessData
 }
 
 export interface StartRoundEvent extends GameEvent {

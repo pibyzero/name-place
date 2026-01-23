@@ -89,14 +89,14 @@ function App() {
     useEffect(() => {
         if (!p2p.isInitialized || gameState.status != 'uninitialized') return
         const evAddPlayer = p2p.create.addPlayerEvent(p2p.state.player)
-        const evWaiting = p2p.create.setWaitingEvent()
+        const evWaiting = p2p.create.setWaitingPeersEvent()
         const events = [evAddPlayer, evWaiting]
         game.applyEvents(events)
     }, [p2p.isInitialized])
 
     const onStartGame = useCallback(() => {
         let playerIndex = 0; // Game always starts with zero indexed player and everyone takes turn
-        let ev = p2p.create.startGameEvent(playerIndex)
+        let ev = p2p.create.waitRoundReadinessEvent(playerIndex)
         game.applyEvents([ev])
     }, [p2p, game])
 
@@ -151,7 +151,7 @@ function App() {
                 <WaitingPeers localState={p2p.state} gameState={gameState} onStartGame={onStartGame} />
             )}
 
-            {gameState.status === 'started' && (
+            {gameState.status === 'waiting-readiness' && (
                 <LetterSelection
                     localState={p2p.state}
                     onSelectLetter={onSelectLetter}
@@ -182,7 +182,7 @@ function App() {
                     answers={gameState.roundData.answers}
                     validations={gameState.roundData.reviews}
                     categories={gameState.categories}
-                    letter={gameState.selectedLetter}
+                    letter={gameState.roundData.letter}
                     currentRound={gameState.currentRound}
                     totalScores={gameState.scores}
                     onNextRound={game.nextRound}
