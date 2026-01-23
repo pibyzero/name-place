@@ -69,7 +69,7 @@ export const LetterSelection: FC<LetterSelectionProps> = ({
                         <Button
                             key={letter}
                             onClick={() => onSelectLetter(letter)}
-                            className="aspect-square flex items-center justify-center text-2xl font-bold bg-coral hover:bg-opacity-80 hover:text-white hover:scale-110 rounded-lg border border-gray-200"
+                            className="aspect-square flex items-center justify-center text-5xl font-bold bg-coral hover:bg-opacity-80 hover:text-white hover:scale-110 rounded-md border border-gray-200"
                             disabled={isUsed(letter)}
                         >
                             {letter}

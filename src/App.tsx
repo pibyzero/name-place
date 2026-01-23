@@ -4,12 +4,13 @@ import { LetterSelection } from './components/screens/LetterSelection'
 import { RoundPlay } from './components/screens/Round'
 import { ReviewPhase } from './components/screens/ReviewPhase'
 import { Leaderboard } from './components/screens/Leaderboard'
+import { CheckReadiness } from './components/screens/CheckReadiness'
 import { useCallback, useEffect, } from 'react'
 import { WaitingPeers } from './components/screens/WaitingPeers'
 import { getSeedPeerFromURL } from './utils/p2p'
 import { useP2P } from './hooks/useP2p'
 import { DataConnection } from 'peerjs'
-import { PlayerAnswers, AnswersData, AnswersReview, ReviewData } from './types/game'
+import { PlayerAnswers, AnswersData, AnswersReview, ReviewData, SubmitRoundReadinessData } from './types/game'
 
 function getRoomFromURL() {
     const hash = window.location.hash;
@@ -100,6 +101,16 @@ function App() {
         game.applyEvents([ev])
     }, [p2p, game])
 
+    const onReadyForRound = useCallback(() => {
+        let data: SubmitRoundReadinessData = {
+            ready: true,
+            submittedBy: p2p.state.player.id
+        }
+        let ev = p2p.create.submitRoundReadinessEvent(data)
+        game.applyEvent(ev)
+        p2p.actions.broadcastGameEvents()
+    }, [p2p, game])
+
     const onSelectLetter = useCallback((letter: string) => {
         let ev = p2p.create.startRoundEvent(letter)
         console.warn("broadcasting start round event before applying to current state. game status:", gameState.status)
@@ -151,7 +162,11 @@ function App() {
                 <WaitingPeers localState={p2p.state} gameState={gameState} onStartGame={onStartGame} />
             )}
 
-            {gameState.status === 'waiting-readiness' && (
+            {gameState.status === 'waiting-readiness' &&
+                <CheckReadiness localState={p2p.state} gameState={gameState} onReady={onReadyForRound} />
+            }
+
+            {gameState.status === 'round-ready' && (
                 <LetterSelection
                     localState={p2p.state}
                     onSelectLetter={onSelectLetter}
