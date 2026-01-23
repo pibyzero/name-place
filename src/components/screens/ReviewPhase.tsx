@@ -40,6 +40,7 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
 
     const categories = gameState.categories;
     const answers = gameState.roundData?.answers || {};
+    const stoppedBy = gameState.players.filter(p => p.id == gameState.roundData?.stoppedBy)[0]?.name
 
     const handleSubmit = useCallback(() => {
         const allReview: RoundAnswersReview = {
@@ -227,7 +228,8 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                     ) : (
                         <>
                             <h3 className="text-xl font-bold mb-4">
-                                {currentPlayer?.name}, review others' answers:
+                                The game has been stopped by {stoppedBy}<br />
+                                {currentPlayer?.name}, you are now reviewing answers:
                             </h3>
 
                             {/* Matrix Table */}

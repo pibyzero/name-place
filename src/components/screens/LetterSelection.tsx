@@ -21,7 +21,6 @@ export const LetterSelection: FC<LetterSelectionProps> = ({
     const isUsed = useCallback((letter: string) => {
         return gameState.allRounds.map(r => r.letter?.toLowerCase()).includes(letter.toLowerCase())
     }, [gameState])
-    console.warn("P is used", isUsed('P'))
 
     if (!roundData) {
         return (
@@ -40,6 +39,7 @@ export const LetterSelection: FC<LetterSelectionProps> = ({
         return (
             <GameLayout centerVertically>
                 <div className="text-center">
+                    <p> Round {gameState.currentRound} </p>
                     <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-coral mb-4"></div>
                     <p className="text-lg text-gray-700">
                         Waiting for <span className="font-semibold text-coral">{turnPlayer?.name || `player ${roundData.turnPlayerIndex}`}</span> to choose a letter...

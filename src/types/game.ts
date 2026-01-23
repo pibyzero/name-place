@@ -52,6 +52,12 @@ export type GameStatus =
     | 'reviewing'         // Reviewing answers
     | 'ended';            // Game ended
 
+export interface GameConfig {
+    language: 'english' | 'nepali'
+    maxPlayers: number // min is 3
+    minRounds: number
+}
+
 // Global game state
 export interface GameState {
     status: GameStatus
