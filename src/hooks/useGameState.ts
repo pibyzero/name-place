@@ -206,9 +206,10 @@ export const useGameState = () => {
 
             if (Object.keys(newReviews).length === prev.players.length) {
                 const nextRound = prev.currentRound + 1
+                const status = prev.currentRound >= prev.config.numRounds ? 'ended' : 'waiting-readiness'
                 return {
                     ...prev,
-                    status: 'waiting-readiness',
+                    status,
                     currentRound: nextRound,
                     allRounds: [...prev.allRounds, { ...prev.roundData, reviews: newReviews }],
                     roundData: {

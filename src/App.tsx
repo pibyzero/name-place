@@ -205,15 +205,8 @@ function App() {
 
             {gameState.status === 'ended' && gameState.roundData && (
                 <Leaderboard
-                    players={gameState.players}
-                    answers={gameState.roundData.answers}
-                    validations={gameState.roundData.reviews}
-                    categories={gameState.categories}
-                    letter={gameState.roundData.letter}
-                    currentRound={gameState.currentRound}
-                    totalScores={gameState.scores}
-                    onNextRound={game.nextRound}
-                    onEndGame={game.endGame}
+                    localState={p2p.state}
+                    gameState={gameState}
                 />
             )}
         </div>

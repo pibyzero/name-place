@@ -89,6 +89,16 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                                         onChange={(e) => setMaxPlayers(Number(e.target.value))}
                                     />
 
+                                    <Input
+                                        label="Total Rounds"
+                                        type="number"
+                                        min={2}
+                                        max={10}
+                                        value={numRounds}
+                                        onChange={(e) => setNumRounds(Number(e.target.value))}
+                                    />
+
+
                                     {/* Manual styling for Select to match existing Input style */}
                                     <div className="flex flex-col gap-1">
                                         <label className="text-sm font-medium text-gray-700">
