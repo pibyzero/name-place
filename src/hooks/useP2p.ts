@@ -24,7 +24,9 @@ export function useP2P() {
     const [allGameEvents, setAllGameEvents] = useState<GameEvent[]>([]);
     // Game events received/derived from p2p messages. These will be consumed and copied over to all Game
     // Events
-    const [peerEvents, setPeerEvents] = useState<GameEvent[]>([]);
+    const [peerEvents, setPeerEvents] = useState<GameEvent[]>([])
+    // To keep track of received peer events and not applying them duplicately
+    const [peerEventIds, setPeerEventIds] = useState<Set<string>>(new Set())
     const [host, setHost] = useState<string>();
     const [status, setStatus] = useState<'uninitialized' | 'initialized' | 'joined'>('uninitialized');
     const [roomName, setRoomName] = useState<string>();
@@ -59,6 +61,14 @@ export function useP2P() {
             let player = playerRef.current;
             if (player?.isHost) {
                 let event = createGameEvent('add-player', newPlayer)
+                if (peerEventIds.has(event.id)) return
+
+                setPeerEventIds(prev => {
+                    let newids = new Set(prev)
+                    newids.add(event.id)
+                    return newids
+
+                })
                 setPeerEvents(prev => [...prev, event])
             }
             // also create connection
@@ -69,10 +79,22 @@ export function useP2P() {
             peers.map((p) => createConnection(p, () => { }))
         },
         onGameEvents: (evs: GameEvent[]) => {
+            // If already received message ids don't add them
+            const filtered = evs.filter(ev => !peerEventIds.has(ev.id))
+            if (filtered.length == 0) return
+
+            // set the set
+            setPeerEventIds(prev => {
+                // Add to set
+                let newset = new Set(prev)
+                filtered.forEach(e => newset.add(e.id))
+                return newset
+            })
+            // set events
             setPeerEvents(prev => [...prev, ...evs])
         }
 
-    }), [createConnection, player, peerEvents]);
+    }), [createConnection, player, peerEvents, peerEventIds]);
 
     const isInitialized = useMemo(() => player !== undefined, [player])
 
@@ -106,13 +128,11 @@ export function useP2P() {
     }, [isInitialized])
 
     const sendGameEvents = useCallback(async (peer: string, events: any[]) => {
-        console.warn("sending game events")
         if (!peers[peer]) {
-            console.warn("Sending data to peer failed. peer:", peer)
+            console.warn("Sending data to peer failed because no peer data. peer:", peer)
+            return false
         }
         const conn = peers[peer].conn;
-        console.warn("conn OPEN", conn.open)
-        console.warn("conn on open listeners", conn.listeners("open"))
         if (!conn.open) {
             console.warn("connection not yet open")
             return false

@@ -95,15 +95,14 @@ function App() {
             console.warn("No game config found. Not initializing")
             return
         }
-        const evAddPlayer = p2p.create.addPlayerEvent(p2p.state.player)
-        const evWaiting = p2p.create.setWaitingPeersEvent()
-        const events = [evAddPlayer, evWaiting]
-        game.applyEvents(events)
 
         // if host, init game
         if (p2p.state.player.isHost) {
+            const evAddPlayer = p2p.create.addPlayerEvent(p2p.state.player)
             const evInitGame = p2p.create.initGameEvent(config)
-            game.applyEvent(evInitGame)
+            const events = [evInitGame, evAddPlayer]
+            game.applyEvents(events)
+            // No need to broadcast here as there are no joined players yet
         }
     }, [p2p.isInitialized, config])
 
