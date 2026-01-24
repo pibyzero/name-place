@@ -18,11 +18,13 @@ interface P2PPlayer extends Player {
     peer: Peer
 }
 
+type MsgFrom = string;
+
 export function useP2P() {
     const [player, setPlayer] = useState<P2PPlayer | undefined>();
     const [peers, setPeers] = useState<Record<string, PeerInfo>>({});
     // Messages that can affect the Game state
-    const [p2pMessages, setP2pMessages] = useState<P2PMessage[]>([]);
+    const [p2pMessages, setP2pMessages] = useState<[P2PMessage, MsgFrom][]>([]);
     const [myGameEvents, setMyGameEvents] = useState<GameEvent[]>([]);
     // Game events received/derived from p2p messages. These will be consumed and copied over to all Game
     // To keep track of received peer events and not applying them duplicately
@@ -50,13 +52,13 @@ export function useP2P() {
             id: targetPeer,
             conn,
             myEventsConsumed: 0,
-            peerEventsConsumed: 0,
+            receivedEvents: new Set()
         }
         setPeers(prev => ({ ...prev, [targetPeer]: peerInfo }));
     }, [peers]);
 
-    const handleMessage = useCallback((msg: P2PMessage, _from: string) => {
-        setP2pMessages(prev => [...prev, msg])
+    const handleMessage = useCallback((msg: P2PMessage, from: string) => {
+        setP2pMessages(prev => [...prev, [msg, from]])
     }, [])
 
     const isInitialized = useMemo(() => player !== undefined, [player])
@@ -176,7 +178,21 @@ export function useP2P() {
             broadcastGameEvents,
             clearP2pMessages: useCallback(() => {
                 setP2pMessages([])
-            }, [])
+            }, []),
+            setReceivedEventsFrom: useCallback((evs: GameEvent[], from: string) => {
+                setPeers(prev => {
+                    let peerInfo = peers[from]
+                    let newreceived = new Set(peerInfo.receivedEvents)
+                    evs.forEach(ev => newreceived.add(ev.id))
+                    return {
+                        ...prev,
+                        [from]: {
+                            ...prev[from],
+                            receivedEvents: newreceived,
+                        }
+                    }
+                })
+            }, [peers])
         },
         create: {
             initGameEvent: (config: GameConfig) => createGameEvent('init-game', config),
@@ -196,5 +212,9 @@ export function useP2P() {
         createConnection,
         p2pMessages,
         myGameEvents,
+        isAlreadyReceivedEventFrom: useCallback((ev: GameEvent, from: string) => {
+            return peers[from].receivedEvents.has(ev.id)
+        }, [peers]),
+
     }
 }

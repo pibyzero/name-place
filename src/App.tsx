@@ -30,7 +30,7 @@ function App() {
     // Wait for any p2p messages that might trigger game state change, and any game states that might need to be relayed
     useEffect(() => {
         if (p2p.p2pMessages.length === 0) return
-        p2p.p2pMessages.forEach(m => {
+        p2p.p2pMessages.forEach(([m, from]) => {
             switch (m.type) {
                 case 'join-handshake':
                     if (p2p.state.player.isHost) {
@@ -46,9 +46,13 @@ function App() {
                     break;
                 case 'game-events':
                     const evs = (m as GameEventMessage).data
-                    game.applyEvents(evs)
-                    // Relay received events after applying them
+                    let filtered = evs.filter(ev => !p2p.isAlreadyReceivedEventFrom(ev, from))
+                    if (filtered.length == 0) return
+
+                    game.applyEvents(filtered)
                     p2p.actions.relayGameEvents(evs)
+
+                    p2p.actions.setReceivedEventsFrom(filtered, from)
                     break
                 default:
                     break;
@@ -57,7 +61,7 @@ function App() {
         p2p.actions.clearP2pMessages()
 
         // broadcasting is done automatically by the useEffect hook
-    }, [p2p.p2pMessages, gameState, game, p2p.actions])
+    }, [p2p.p2pMessages, gameState, game, p2p.actions, p2p.isAlreadyReceivedEventFrom])
 
     // Wait for myGameEvents to change
     useEffect(() => {
@@ -96,7 +100,7 @@ function App() {
             conn.send({ type: 'join-handshake', data: p2p.state.player })
             console.warn("sent join handshake")
         })
-    }, [p2p.status]);
+    }, [p2p.status, p2p.state]);
 
     useEffect(() => {
         if (!p2p.isInitialized || gameState.status != 'uninitialized') return

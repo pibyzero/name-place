@@ -31,5 +31,5 @@ export interface PeerInfo {
     id: string,
     conn: DataConnection,
     myEventsConsumed: number;
-    peerEventsConsumed: number;
+    receivedEvents: Set<string>;
 }
