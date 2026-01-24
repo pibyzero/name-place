@@ -32,6 +32,10 @@ export interface GameActions {
 
 export const useGameState = () => {
     const [gameState, setGameState] = useState<GameState>(initialState)
+    /// To store all applied game events
+    const [appliedEvents, setAppliedEvents] = useState<GameEvent[]>([]);
+    /// Index of applied game event ids
+    const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set())
 
     useEffect(() => {
         const seen = new Set<string>();
@@ -230,6 +234,9 @@ export const useGameState = () => {
     }, [])
 
     const applyEvent = useCallback((ev: GameEvent) => {
+        // Don't apply already applied event
+        if (appliedEventIds.has(ev.id)) return
+
         switch (ev.type) {
             case 'init-game':
                 handleInitGame(ev)
@@ -259,7 +266,15 @@ export const useGameState = () => {
                 handleSubmitReview(ev)
                 break;
         }
+
+        setAppliedEventIds(prev => {
+            let newevs = new Set(prev)
+            newevs.add(ev.id)
+            return newevs
+        })
+        setAppliedEvents(prev => [...prev, ev])
     }, [
+        appliedEventIds,
         handleAddPlayer,
         handleSetWaitingPeers,
         handleWaitReadiness,

@@ -5,6 +5,28 @@ import { P2PMessage } from "../types/p2p";
 
 const USE_PROD = false;
 
+export function getRoomFromURL() {
+    const hash = window.location.hash;
+    const match = hash.match(/#room\/([^?]+)/);
+    return match ? match[1] : undefined;
+}
+
+// Generate a game room name.
+export function generateRoomName() {
+    const adjectives = ['happy', 'sunny', 'cosmic', 'wild', 'bright', 'swift', 'noble', 'misty'];
+    const nouns = ['tiger', 'ocean', 'mountain', 'forest', 'river', 'storm', 'eagle'];
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const noun = nouns[Math.floor(Math.random() * nouns.length)];
+    const random = Math.random().toString(16).slice(2, 2 + 4);
+    return `${adj}-${noun}-${random}`;
+}
+
+export function roomNameFromSeedPeer(seedPeer: string | undefined): string | undefined {
+    if (seedPeer === undefined) return undefined
+    // TODO; check format
+    return seedPeer.split('-').slice(0, 2).join('-')
+}
+
 export function getSeedPeerFromURL() {
     const hash = window.location.hash;
     const match = hash.match(/seed-peer=([^&]+)/);
@@ -54,7 +76,7 @@ const localConfig = {
     port: 9000,
     path: '/',
     config: {
-        iceServers: []   // Empty! No STUN/TURN for local connections
+        iceServers: []   // No STUN/TURN for local connections
     },
     debug: 2
 }
@@ -94,7 +116,7 @@ export function setupConnection(conn: DataConnection, handleMessage: (m: P2PMess
 }
 
 interface HandlerParams {
-    onJoinHandshake: VoidWithArg<Player>;
+    onJoinHandshake: VoidWithArg<P2PMessage>;
     onHandshake: VoidWithArg<Player>;
     onPeerList: VoidWithArg<string[]>;
     onGameEvents: VoidWithArg<GameEvent[]>;
@@ -104,7 +126,7 @@ export function getMessageHandler({ onJoinHandshake, onHandshake, onPeerList, on
     return (msg: P2PMessage, _fromPeer: string) => {
         switch (msg.type) {
             case "join-handshake":
-                onJoinHandshake(msg.data as Player)
+                onJoinHandshake(msg)
                 break;
             case "handshake":
                 onHandshake(msg.data as Player)

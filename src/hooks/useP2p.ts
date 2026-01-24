@@ -3,7 +3,7 @@ import { GameEvent, GameEventType, LocalState, Player, AnswersData, ReviewData, 
 import Peer, { DataConnection } from "peerjs";
 import { VoidWithArg } from "../types/common";
 import { P2PMessage, PeerInfo } from "../types/p2p";
-import { createPeer, getMessageHandler, setupConnection } from "../utils/p2p";
+import { createPeer, setupConnection } from "../utils/p2p";
 
 // Assumptions:
 //  - All the peers have synced time i.e. none of them are too far in the past or future
@@ -21,12 +21,11 @@ interface P2PPlayer extends Player {
 export function useP2P() {
     const [player, setPlayer] = useState<P2PPlayer | undefined>();
     const [peers, setPeers] = useState<Record<string, PeerInfo>>({});
-    const [allGameEvents, setAllGameEvents] = useState<GameEvent[]>([]);
+    // Messages that can affect the Game state
+    const [p2pMessages, setP2pMessages] = useState<P2PMessage[]>([]);
+    const [myGameEvents, setMyGameEvents] = useState<GameEvent[]>([]);
     // Game events received/derived from p2p messages. These will be consumed and copied over to all Game
-    // Events
-    const [peerEvents, setPeerEvents] = useState<GameEvent[]>([])
     // To keep track of received peer events and not applying them duplicately
-    const [peerEventIds, setPeerEventIds] = useState<Set<string>>(new Set())
     const [host, setHost] = useState<string>();
     const [status, setStatus] = useState<'uninitialized' | 'initialized' | 'joined'>('uninitialized');
     const [roomName, setRoomName] = useState<string>();
@@ -56,45 +55,9 @@ export function useP2P() {
         setPeers(prev => ({ ...prev, [targetPeer]: peerInfo }));
     }, [peers]);
 
-    const handleMessage = useCallback(getMessageHandler({
-        onJoinHandshake: (newPlayer: Player) => {
-            let player = playerRef.current;
-            if (player?.isHost) {
-                let event = createGameEvent('add-player', newPlayer)
-                if (peerEventIds.has(event.id)) return
-
-                setPeerEventIds(prev => {
-                    let newids = new Set(prev)
-                    newids.add(event.id)
-                    return newids
-
-                })
-                setPeerEvents(prev => [...prev, event])
-            }
-            // also create connection
-            createConnection(newPlayer.id, () => { })
-        },
-        onHandshake: () => { },
-        onPeerList: (peers: string[]) => {
-            peers.map((p) => createConnection(p, () => { }))
-        },
-        onGameEvents: (evs: GameEvent[]) => {
-            // If already received message ids don't add them
-            const filtered = evs.filter(ev => !peerEventIds.has(ev.id))
-            if (filtered.length == 0) return
-
-            // set the set
-            setPeerEventIds(prev => {
-                // Add to set
-                let newset = new Set(prev)
-                filtered.forEach(e => newset.add(e.id))
-                return newset
-            })
-            // set events
-            setPeerEvents(prev => [...prev, ...evs])
-        }
-
-    }), [createConnection, player, peerEvents, peerEventIds]);
+    const handleMessage = useCallback((msg: P2PMessage, _from: string) => {
+        setP2pMessages(prev => [...prev, msg])
+    }, [])
 
     const isInitialized = useMemo(() => player !== undefined, [player])
 
@@ -143,31 +106,26 @@ export function useP2P() {
     }, [peers])
 
     const createGameEvent = useCallback((type: GameEventType, payload: any) => {
-        let evidx = allGameEvents.length;
+        let evidx = myGameEvents.length;
         let event: GameEvent = {
             id: `${playerRef.current?.id}-${evidx}`,
             timestamp: new Date().getTime(),
             type,
             payload,
         }
-        setAllGameEvents(prev => [...prev, event])
+        setMyGameEvents(prev => [...prev, event])
         return event
-    }, [allGameEvents]);
+    }, [myGameEvents]);
 
-    // Clear peer events and append them to all game events
-    const clearPeerEvents = useCallback(() => {
-        setAllGameEvents(prev => [...prev, ...peerEvents])
-        setPeerEvents([])
-    }, [peerEvents, allGameEvents])
-
-    // Broadcast game events based on peer
+    // Broadcast game events created by this node based on peer
     const broadcastGameEvents = useCallback(() => {
         let newPeers: Record<string, PeerInfo> = {};
 
         Object.entries(peers).forEach(async ([peerId, peerinfo]) => {
             let start = peerinfo.myEventsConsumed;
-            // Filter events not from the peer itself
-            const events = allGameEvents.slice(start).filter((ev) => ev.id.indexOf(peerId) < 0);
+            // Get my events from last consumed index
+            const myevs = myGameEvents.slice(start)
+            const events = [...myevs]
             let ok = false;
             if (events.length > 0) {
                 console.warn("sending game events to", peerId)
@@ -176,13 +134,27 @@ export function useP2P() {
             }
             // update consumed events count only if send succeeded
             if (ok) {
-                let newPeerInfo: PeerInfo = { ...peerinfo, myEventsConsumed: allGameEvents.length };
+                let newPeerInfo: PeerInfo = { ...peerinfo, myEventsConsumed: myGameEvents.length };
                 newPeers[peerId] = newPeerInfo
             }
         })
         setPeers(prev => ({ ...prev, ...newPeers }))
 
-    }, [peers, allGameEvents])
+    }, [peers, myGameEvents])
+
+    // Relay events received from other peers
+    const relayGameEvents = useCallback((evs: GameEvent[]) => {
+        Object.entries(peers).forEach(async ([peerId, _]) => {
+            const filtered_evs = evs.filter(ev => !ev.id.includes(peerId));
+            let ok = false;
+            if (filtered_evs.length > 0) {
+                console.warn("relaying game events to", peerId)
+                ok = await sendGameEvents(peerId, filtered_evs);
+                console.warn("relaying ok: ", ok)
+            }
+        })
+    }, [sendGameEvents])
+
 
     const me: Player | undefined = player
         ? {
@@ -200,8 +172,11 @@ export function useP2P() {
             roomName,
         } as LocalState,
         actions: {
+            relayGameEvents,
             broadcastGameEvents,
-            clearPeerEvents,
+            clearP2pMessages: useCallback(() => {
+                setP2pMessages([])
+            }, [])
         },
         create: {
             initGameEvent: (config: GameConfig) => createGameEvent('init-game', config),
@@ -219,7 +194,7 @@ export function useP2P() {
         initialize,
         setRoomName,
         createConnection,
-        peerEvents,
-        allGameEvents,
+        p2pMessages,
+        myGameEvents,
     }
 }

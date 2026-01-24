@@ -1,5 +1,5 @@
 import { DataConnection } from "peerjs";
-import { Player } from "./game";
+import { GameEvent, Player } from "./game";
 
 export interface P2PMessage {
     type: 'join-handshake' | 'handshake' | 'peer-list' | 'game-events';
@@ -24,7 +24,7 @@ export interface PeerListMessage extends P2PMessage {
 
 export interface GameEventMessage extends P2PMessage {
     type: 'game-events';
-    data: any[];
+    data: GameEvent[];
 }
 
 export interface PeerInfo {

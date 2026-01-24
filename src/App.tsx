@@ -7,28 +7,13 @@ import { Leaderboard } from './components/screens/Leaderboard'
 import { CheckReadiness } from './components/screens/CheckReadiness'
 import { useCallback, useEffect, useState, } from 'react'
 import { WaitingPeers } from './components/screens/WaitingPeers'
-import { getSeedPeerFromURL } from './utils/p2p'
+import { generateRoomName, getRoomFromURL, getSeedPeerFromURL, roomNameFromSeedPeer } from './utils/p2p'
 import { useP2P } from './hooks/useP2p'
 import { DataConnection } from 'peerjs'
 import { PlayerAnswers, AnswersData, AnswersReview, ReviewData, SubmitRoundReadinessData, GameConfig } from './types/game'
+import { GameEventMessage, JoinHandshakeMessage, PeerListMessage } from './types/p2p'
 
-function getRoomFromURL() {
-    const hash = window.location.hash;
-    const match = hash.match(/#room\/([^?]+)/);
-    return match ? match[1] : undefined;
-}
-
-// Generate a game room name.
-function generateRoomName() {
-    const adjectives = ['happy', 'sunny', 'cosmic', 'wild', 'bright', 'swift', 'noble', 'misty'];
-    const nouns = ['tiger', 'ocean', 'mountain', 'forest', 'river', 'storm', 'eagle'];
-    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const noun = nouns[Math.floor(Math.random() * nouns.length)];
-    const random = Math.random().toString(16).slice(2, 2 + 4);
-    return `${adj}-${noun}-${random}`;
-}
-
-const RAND_LEN = 1; // 5
+const RAND_LEN = 5
 
 function App() {
     const { gameState, actions: game } = useGameState()
@@ -42,38 +27,62 @@ function App() {
         }
     }, [])
 
-    // Wait for peer game events
+    // Wait for any p2p messages that might trigger game state change, and any game states that might need to be relayed
     useEffect(() => {
-        if (p2p.peerEvents.length == 0) return
-        console.warn("received peer events", p2p.peerEvents)
-        game.applyEvents(p2p.peerEvents)
-        // clear peer events, this moves events to all game events
-        p2p.actions.clearPeerEvents()
-    }, [p2p.peerEvents, game, gameState])
+        if (p2p.p2pMessages.length === 0) return
+        p2p.p2pMessages.forEach(m => {
+            switch (m.type) {
+                case 'join-handshake':
+                    if (p2p.state.player.isHost) {
+                        const player = (m as JoinHandshakeMessage).data
+                        const ev = p2p.create.addPlayerEvent(player)
+                        game.applyEvent(ev)
+                        p2p.createConnection(player.id, () => { })
+                    }
+                    break;
+                case 'peer-list':
+                    const peers = (m as PeerListMessage).data
+                    peers.forEach(p => p2p.createConnection(p, () => { }))
+                    break;
+                case 'game-events':
+                    const evs = (m as GameEventMessage).data
+                    game.applyEvents(evs)
+                    // Relay received events after applying them
+                    p2p.actions.relayGameEvents(evs)
+                    break
+                default:
+                    break;
+            }
+        })
+        p2p.actions.clearP2pMessages()
 
-    // Wait for allGameEvents to change
+        // broadcasting is done automatically by the useEffect hook
+    }, [p2p.p2pMessages, gameState, game, p2p.actions])
+
+    // Wait for myGameEvents to change
     useEffect(() => {
-        if (p2p.allGameEvents.length == 0) return
-        console.warn("broadcasting events")
+        if (p2p.myGameEvents.length == 0) return
+        console.warn("broadcasting after receiving my events", p2p.myGameEvents)
         p2p.actions.broadcastGameEvents()
-    }, [p2p.allGameEvents])
+    }, [p2p.myGameEvents])
 
     // Also set timer just in case
     useEffect(() => {
-        if (p2p.allGameEvents.length === 0) return;
+        if (p2p.myGameEvents.length == 0) return
 
         const intervalId = setInterval(() => {
             p2p.actions.broadcastGameEvents();
         }, 1000);
 
         return () => clearInterval(intervalId); // Cleanup on unmount
-    }, [p2p.allGameEvents, p2p.actions]);
+    }, [p2p.myGameEvents, p2p.actions]);
 
     const onInit = useCallback((name: string, config: GameConfig) => {
         if (p2p.isInitialized) return;
         let seedPeer = getSeedPeerFromURL();
-        let roomName = p2p.state.roomName || generateRoomName();
+        let roomName = p2p.state.roomName || roomNameFromSeedPeer(seedPeer) || generateRoomName();
         const id = `${roomName}-${Math.random().toString(16).slice(2, 2 + RAND_LEN)}`;
+        console.warn("init id", id)
         p2p.initialize(roomName, id, name, seedPeer)
         setConfig(config)
     }, [])
@@ -98,8 +107,8 @@ function App() {
 
         // if host, init game
         if (p2p.state.player.isHost) {
-            const evAddPlayer = p2p.create.addPlayerEvent(p2p.state.player)
             const evInitGame = p2p.create.initGameEvent(config)
+            const evAddPlayer = p2p.create.addPlayerEvent(p2p.state.player)
             const events = [evInitGame, evAddPlayer]
             game.applyEvents(events)
             // No need to broadcast here as there are no joined players yet
