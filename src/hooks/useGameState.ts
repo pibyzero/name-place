@@ -178,11 +178,14 @@ export const useGameState = () => {
             if (!!prev.roundData.answers[data.submittedBy]) {
                 answers = prev.roundData.answers[data.submittedBy]
             }
+            const newAnswers = { ...prev.roundData.answers, [data.submittedBy]: data.answers }
+            const status = Object.keys(newAnswers).length === prev.players.length ? 'reviewing' : prev.status
 
             return {
                 ...prev,
                 roundData: {
                     ...prev.roundData,
+                    status,
                     stoppedBy,
                     stoppedAt,
                     answers: { ...prev.roundData.answers, [data.submittedBy]: answers }

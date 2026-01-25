@@ -126,7 +126,7 @@ export const RoundPlay: FC<RoundPlayProps> = ({
                                 <span className="font-semibold text-coral">{stoppedBy}</span> has stopped the round
                             </p>
                             <p className="text-gray-600">
-                                Waiting for all players to submit their answers...
+                                Waiting for all players answers to be submitted automatically...
                             </p>
                         </div>
                     </div>
