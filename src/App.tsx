@@ -37,12 +37,16 @@ function App() {
                         const player = (m as JoinHandshakeMessage).data
                         const ev = p2p.create.addPlayerEvent(player)
                         game.applyEvent(ev)
-                        p2p.createConnection(player.id, () => { })
+                        const onConn = (conn: DataConnection) => {
+                            p2p.actions.broadcastGameEvents()
+                            conn.send({ type: 'peer-list', data: Object.keys(p2p.peersRef.current || {}) })
+                        }
+                        p2p.createConnection(player.id, onConn)
                     }
                     break;
                 case 'peer-list':
-                    const peers = (m as PeerListMessage).data
-                    peers.forEach(p => p2p.createConnection(p, () => { }))
+                    const newPeers = (m as PeerListMessage).data.filter(p => !p2p.peersRef.current[p] && p !== p2p.state.player.id)
+                    newPeers.forEach(p => p2p.createConnection(p, () => { }))
                     break;
                 case 'game-events':
                     const evs = (m as GameEventMessage).data
@@ -60,21 +64,12 @@ function App() {
         })
         p2p.actions.clearP2pMessages()
 
-        // broadcasting is done automatically by the useEffect hook
-    }, [p2p.p2pMessages, gameState, game, p2p.actions, p2p.isAlreadyReceivedEventFrom])
+    }, [p2p.p2pMessages, game, p2p.actions, p2p.isAlreadyReceivedEventFrom, p2p.state.player, p2p.create, p2p.createConnection, p2p.peersRef])
 
-    // Wait for myGameEvents to change
+    // Set timer to periodically broadcast unsynced msgs
     useEffect(() => {
-        if (p2p.myGameEvents.length == 0) return
-        console.warn("broadcasting after receiving my events", p2p.myGameEvents)
-        p2p.actions.broadcastGameEvents()
-    }, [p2p.myGameEvents])
-
-    // Also set timer just in case
-    useEffect(() => {
-        if (p2p.myGameEvents.length == 0) return
-
         const intervalId = setInterval(() => {
+            if (p2p.myGameEvents.length == 0) return
             p2p.actions.broadcastGameEvents();
         }, 1000);
 
@@ -86,7 +81,6 @@ function App() {
         let seedPeer = getSeedPeerFromURL();
         let roomName = p2p.state.roomName || roomNameFromSeedPeer(seedPeer) || generateRoomName();
         const id = `${roomName}-${Math.random().toString(16).slice(2, 2 + RAND_LEN)}`;
-        console.warn("init id", id)
         p2p.initialize(roomName, id, name, seedPeer)
         setConfig(config)
     }, [])
@@ -96,9 +90,7 @@ function App() {
         if (p2p.status != 'initialized' || p2p.isHost) return;
         // Try create connection with host and join handshake
         p2p.createConnection(p2p.state.host, (conn: DataConnection) => {
-            console.warn("trying send join handshake", p2p.state.player)
             conn.send({ type: 'join-handshake', data: p2p.state.player })
-            console.warn("sent join handshake")
         })
     }, [p2p.status, p2p.state]);
 
@@ -155,6 +147,7 @@ function App() {
     }, [p2p, game, gameState])
 
     const broadcastAnswers = useCallback((ans: PlayerAnswers) => {
+        console.warn("broadcasting answers by", p2p.state.player.name)
         let data: AnswersData = {
             answers: ans,
             submittedBy: p2p.state.player.id,

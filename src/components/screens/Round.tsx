@@ -42,7 +42,6 @@ export const RoundPlay: FC<RoundPlayProps> = ({
     const letter = gameState.roundData.letter;
 
     const stoppedBy = gameState.players.filter(p => p.id == gameState.roundData?.stoppedBy)[0]?.name
-    const timeRemaining = 0;  // TODO: get correct value when relevant
     const mode: string = 'classic'
 
     const setAnswerForCategory = useCallback((cat: string, ans: string) => {

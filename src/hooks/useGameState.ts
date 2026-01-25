@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import {
     GameState,
     GameEvent,
@@ -36,6 +36,10 @@ export const useGameState = () => {
     const [appliedEvents, setAppliedEvents] = useState<GameEvent[]>([]);
     /// Index of applied game event ids
     const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set())
+
+    const getPlayerName = useCallback((pid: string) => {
+        return gameState.players.filter(p => p.id == pid)[0].name
+    }, [gameState])
 
     useEffect(() => {
         const seen = new Set<string>();
@@ -156,6 +160,7 @@ export const useGameState = () => {
                 return prev
             }
             if (!prev.roundData) return prev
+            console.warn("RECEIVED stop ANSWERS FROM ", gameState.players.filter(p => p.id == data.submittedBy)[0].name)
 
             return {
                 ...prev,
@@ -167,7 +172,7 @@ export const useGameState = () => {
                 }
             }
         })
-    }, [])
+    }, [gameState])
 
     const handleSubmitAnswers = useCallback((ev: GameEvent) => {
         setGameState(prev => {
@@ -178,10 +183,11 @@ export const useGameState = () => {
             }
             if (!prev.roundData) return prev
             if (!!prev.roundData.answers[submitData.submittedBy]) {
-                console.warn(`Received re-submitted answers by player ${submitData.submittedBy}. Ignoring event.`)
+                console.warn(`Received re-submitted answers by ${getPlayerName(submitData.submittedBy)}. Ignoring event.`)
                 return prev
             }
 
+            console.warn("RECEIVED ANSWERS FROM ", gameState.players.filter(p => p.id == submitData.submittedBy)[0].name)
             const newAnswers = { ...prev.roundData.answers, [submitData.submittedBy]: submitData.answers }
             const status = Object.keys(newAnswers).length === prev.players.length ? 'reviewing' : prev.status
 
@@ -191,7 +197,7 @@ export const useGameState = () => {
                 roundData: { ...prev.roundData, answers: newAnswers }
             }
         })
-    }, [])
+    }, [gameState, getPlayerName])
 
     const handleSubmitReview = useCallback((ev: GameEvent) => {
         setGameState(prev => {
@@ -286,12 +292,11 @@ export const useGameState = () => {
         handleInitGame,
     ])
 
-    const applyEvents = useCallback((evs: GameEvent[]) => {
-        evs.forEach(applyEvent)
-    }, [applyEvent])
-
     return {
         gameState,
-        actions: { applyEvent, applyEvents } as GameActions
+        actions: useMemo(() => ({
+            applyEvent,
+            applyEvents: (evs: GameEvent[]) => evs.forEach(applyEvent)
+        }), [applyEvent])
     }
 }
