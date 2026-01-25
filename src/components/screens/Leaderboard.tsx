@@ -1,6 +1,7 @@
 import { FC, useMemo } from 'react'
 import { GameState, LocalState } from '../../types/game'
 import { calculateCumulativeScores, getLeaderboard } from '../../utils/scoring'
+import { GameLayout } from '../ui/GameLayout'
 
 interface LeaderboardProps {
     gameState: GameState
@@ -26,16 +27,18 @@ export const Leaderboard: FC<LeaderboardProps> = ({
     }
 
     return (
-        <div className="min-h-screen p-4 md:p-12">
-            <div className="max-w-xl mx-auto">
+        <GameLayout maxWidth="md" centerVertically>
+            <div className="w-full space-y-8">
                 {/* Improved Headings */}
-                <div className="mb-10">
-                    <h2 className="text-4xl font-extrabold tracking-tight text-gray-900">Final Standings for {gameState.allRounds.length} rounds</h2>
-                    <p className="text-gray-500 mt-2 font-medium">Well played! Here is how everyone ranked.</p>
+                <div className="text-center">
+                    <h2 className="text-4xl font-bold text-coral mb-2">Final Standings</h2>
+                    <p className="text-gray-600">
+                        {gameState.allRounds.length} {gameState.allRounds.length === 1 ? 'round' : 'rounds'} played - Well done everyone!
+                    </p>
                 </div>
 
                 {/* Simplified List */}
-                <div className="divide-y divide-gray-100 border-t border-b border-gray-100">
+                <div className="space-y-3">
                     {leaderboard.map((entry, index) => {
                         const isSelf = entry.playerId === localState.player.id;
                         const medal = getMedal(index);
@@ -43,7 +46,7 @@ export const Leaderboard: FC<LeaderboardProps> = ({
                         return (
                             <div
                                 key={entry.playerId}
-                                className={`flex items-center justify-between py-4 px-2 ${isSelf ? 'bg-coral bg-opacity-5 -mx-2 px-4 rounded-lg' : ''
+                                className={`flex items-center justify-between py-4 px-4 rounded-lg ${isSelf ? 'bg-coral bg-opacity-10 border-2 border-coral' : 'bg-white bg-opacity-40'
                                     }`}
                             >
                                 <div className="flex items-center gap-5">
@@ -77,6 +80,6 @@ export const Leaderboard: FC<LeaderboardProps> = ({
                     })}
                 </div>
             </div>
-        </div>
+        </GameLayout>
     )
 }

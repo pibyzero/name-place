@@ -7,6 +7,7 @@ import { Leaderboard } from './components/screens/Leaderboard'
 import { CheckReadiness } from './components/screens/CheckReadiness'
 import { useCallback, useEffect, useState, } from 'react'
 import { WaitingPeers } from './components/screens/WaitingPeers'
+import { GameStatusBar } from './components/ui/GameStatusBar'
 import { generateRoomName, getRoomFromURL, getSeedPeerFromURL, roomNameFromSeedPeer } from './utils/p2p'
 import { useP2P } from './hooks/useP2p'
 import { DataConnection } from 'peerjs'
@@ -171,6 +172,8 @@ function App() {
 
     return (
         <div className="min-h-screen bg-cream">
+            <GameStatusBar gameState={gameState} localState={p2p.state} />
+
             {gameState.status === 'uninitialized' && p2p.state && (
                 <Home onInit={onInit} roomName={p2p.state.roomName} />
             )}

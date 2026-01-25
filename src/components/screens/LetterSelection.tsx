@@ -39,30 +39,44 @@ export const LetterSelection: FC<LetterSelectionProps> = ({
 
     if (!isMyTurn) {
         const turnPlayer = gameState.players[roundData.turnPlayerIndex];
+        const usedLetters = gameState.allRounds.map(r => r.letter).filter(Boolean);
         return (
             <GameLayout centerVertically>
-                <div className="text-center">
-                    <p> Round {gameState.currentRound} </p>
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-coral mb-4"></div>
-                    <p className="text-lg text-gray-700">
-                        Waiting for <span className="font-semibold text-coral">{turnPlayer?.name || `player ${roundData.turnPlayerIndex}`}</span> to choose a letter...
-                    </p>
+                <div className="w-full space-y-8">
+                    <div className="bg-white bg-opacity-40 rounded-xl p-8 text-center">
+                        <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-coral mb-6"></div>
+                        <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                            Letter Selection in Progress
+                        </h3>
+                        <p className="text-lg text-gray-700">
+                            <span className="font-bold text-coral">{turnPlayer?.name || `Player ${roundData.turnPlayerIndex + 1}`}</span> is choosing a letter
+                        </p>
+                    </div>
+
+                    {usedLetters.length > 0 && (
+                        <div className="bg-white bg-opacity-40 rounded-xl p-6">
+                            <h4 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
+                                Letters Used So Far
+                            </h4>
+                            <div className="flex flex-wrap gap-2 justify-center">
+                                {usedLetters.map((letter, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="w-10 h-10 flex items-center justify-center bg-gray-200 text-gray-600 font-bold rounded-lg"
+                                    >
+                                        {letter}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </GameLayout>
         )
     }
 
     return (
-        <GameLayout
-            header={
-                <div className="text-center">
-                    <p className="text-sm text-gray-600 uppercase tracking-wide">
-                        Round {currentRound}
-                    </p>
-                </div>
-            }
-            centerVertically
-        >
+        <GameLayout centerVertically>
             <div className="w-full space-y-8">
                 <h2 className="text-3xl font-bold text-center">
                     Choose a letter. It's your turn!
@@ -72,8 +86,9 @@ export const LetterSelection: FC<LetterSelectionProps> = ({
                         <Button
                             key={letter}
                             onClick={() => onSelectLetter(letter)}
-                            className="aspect-square flex items-center justify-center text-5xl font-bold bg-coral hover:bg-opacity-80 hover:text-white hover:scale-110 rounded-md border border-gray-200"
+                            className="aspect-square flex items-center justify-center text-4xl font-bold hover:scale-105 transition-all duration-200"
                             disabled={isUsed(letter)}
+                            variant="primary"
                         >
                             {letter}
                         </Button>

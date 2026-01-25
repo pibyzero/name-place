@@ -75,7 +75,7 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState, onS
                                 type="text"
                                 value={url}
                                 readOnly
-                                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 bg-white bg-opacity-80 text-sm font-mono"
+                                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 bg-white bg-opacity-80 text-sm font-mono transition-all focus:outline-none focus:ring-2 focus:ring-coral focus:border-coral"
                                 onClick={(e) => e.currentTarget.select()}
                             />
                             <Button
@@ -99,7 +99,7 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState, onS
                                 key={index}
                                 className="flex items-center gap-3 p-3 bg-white bg-opacity-60 rounded-lg"
                             >
-                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                <div className="w-2 h-2 bg-teal rounded-full animate-pulse"></div>
                                 <span className="text-gray-700 font-medium">
                                     {preText(peer)} {peer.name}
                                 </span>

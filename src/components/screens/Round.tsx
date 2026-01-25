@@ -44,6 +44,8 @@ export const RoundPlay: FC<RoundPlayProps> = ({
     const stoppedBy = gameState.players.filter(p => p.id == gameState.roundData?.stoppedBy)[0]?.name
     const mode: string = 'classic'
 
+    const turnPlayer = gameState.players[gameState.roundData?.turnPlayerIndex].name;
+
     const setAnswerForCategory = useCallback((cat: string, ans: string) => {
         setMyAnswers(prev => ({ ...prev, [cat]: ans }))
     }, [])
@@ -58,27 +60,15 @@ export const RoundPlay: FC<RoundPlayProps> = ({
     }, [myAnswers, onClickStopRound])
 
     return (
-        <GameLayout
-            header={
-                <div className="text-center">
-                    <p className="text-sm text-gray-600 uppercase tracking-wide">
-                        Round {gameState.currentRound}
-                    </p>
-                </div>
-            }
-        >
-            <div className="space-y-8 relative">
-                {/* Letter display */}
-                <div className="text-center">
-                    <div className="flex items-center justify-center gap-3 mb-6">
-                        <span className="text-lg font-medium">Letter:</span>
-                        <span className="text-4xl font-bold text-coral">{letter}</span>
-                    </div>
-                </div>
-
+        <GameLayout>
+            <div className="space-y-6 relative">
                 {/* Answers form */}
                 <div className="space-y-4">
-                    <h3 className="text-xl font-bold text-center">My Answers</h3>
+                    <h3 className="text-2xl font-bold text-center">
+                        <span className="text-coral"> {turnPlayer} </span> has chosen the initial <span className="text-coral">{letter}</span> for this round.
+                        <br />
+                        <small className="font-normal"> Fill in the words starting with <span className="text-coral">{letter}</span></small>
+                    </h3>
                     {gameState.categories.map((category) => (
                         <div key={category} className="flex items-center space-x-4">
                             <label className="w-32 font-semibold">{category}:</label>
@@ -91,7 +81,7 @@ export const RoundPlay: FC<RoundPlayProps> = ({
                                 className="flex-1"
                             />
                             {myAnswers[category]?.trim() && (
-                                <span className="text-green-500">✓</span>
+                                <span className="text-teal font-bold">✓</span>
                             )}
                         </div>
                     ))}
@@ -127,7 +117,7 @@ export const RoundPlay: FC<RoundPlayProps> = ({
                 {/* Overlay */}
                 {someoneStoppedRound && (
                     <div className="fixed inset-0 bg-gray-900/70 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center shadow-2xl">
+                        <div className="bg-white rounded-xl p-8 max-w-md mx-4 text-center shadow-2xl">
                             <div className="mb-4">
                                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-coral"></div>
                             </div>

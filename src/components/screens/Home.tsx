@@ -32,7 +32,7 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
 
     return (
         <GameLayout maxWidth="sm" centerVertically>
-            <div className="w-full space-y-12">
+            <div className="w-full space-y-8">
                 {/* Title */}
                 <div className="text-center">
                     <h1 className="text-5xl font-bold mb-2 text-coral">Name Place</h1>
@@ -40,7 +40,7 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                     <p className="mt-4 text-gray-600 text-sm">The classic word game with friends</p>
                 </div>
                 {/* Form Card */}
-                <div className="space-y-6 bg-white bg-opacity-40 rounded-xl p-8">
+                <div className="space-y-4 bg-white bg-opacity-40 rounded-xl p-6">
                     {roomName && (
                         <div className="text-center p-3 bg-teal bg-opacity-20 rounded-lg">
                             <p className="text-gray-700 font-medium">
@@ -79,7 +79,7 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                             </button>
 
                             {showConfig && (
-                                <div className="grid grid-cols-2 gap-4 p-4 bg-white bg-opacity-50 rounded-lg animate-in fade-in slide-in-from-top-2 duration-200">
+                                <div className="grid grid-cols-2 gap-4 p-4 bg-white bg-opacity-60 rounded-lg animate-in fade-in slide-in-from-top-2 duration-200">
                                     <Input
                                         label="Max Players"
                                         type="number"
@@ -107,7 +107,7 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                                         <select
                                             value={language}
                                             onChange={(e) => setLanguage(e.target.value as Language)}
-                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent"
+                                            className="w-full px-4 py-2 bg-white bg-opacity-80 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-coral focus:border-coral transition-all"
                                         >
                                             <option value="english">English</option>
                                             <option value="nepali">Nepali</option>

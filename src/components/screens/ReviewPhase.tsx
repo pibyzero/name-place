@@ -3,6 +3,7 @@ import { AnswersReview as RoundAnswersReview, GameState, LocalState, PlayersAnsw
 import { Button } from '../ui/Button'
 import { VoidWithArg } from '../../types/common'
 import { PlayerStatusCard } from '../ui/PlayerCard'
+import { GameLayout } from '../ui/GameLayout'
 
 interface ReviewPhaseProps {
     localState: LocalState
@@ -105,13 +106,8 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
     })
 
     return (
-        <div className="min-h-screen p-4 md:p-6">
-            <div className="max-w-7xl mx-auto space-y-8">
-                {/* Header */}
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold mb-2">Review Phase - Round {gameState.currentRound}</h2>
-                    <p className="text-lg text-gray-700">Letter: <span className="font-bold text-coral">{gameState.roundData?.letter}</span></p>
-                </div>
+        <GameLayout maxWidth="lg">
+            <div className="w-full space-y-6">
 
                 {/* Review Interface - Matrix View */}
                 <div className="overflow-x-auto">
@@ -121,7 +117,7 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                 {allReviewsSubmitted ? (
                                     <>
                                         <div className="text-6xl animate-bounce">✓</div>
-                                        <p className="text-2xl font-bold text-green-700">
+                                        <p className="text-2xl font-bold text-teal">
                                             All reviews submitted!
                                         </p>
                                         <p className="text-gray-600">
@@ -135,7 +131,7 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                             </div>
 
                             {/* Show submitted review in read-only mode */}
-                            <div className="overflow-x-auto relative bg-white bg-opacity-40 rounded-lg">
+                            <div className="overflow-x-auto relative bg-white bg-opacity-40 rounded-xl">
                                 <table className="min-w-full">
                                     <thead>
                                         <tr className="border-b border-gray-400">
@@ -189,9 +185,9 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                                                     <div className="flex flex-col gap-1">
                                                                         <span className="text-sm font-medium">{answer}</span>
                                                                         {validationStatus !== undefined && (
-                                                                            <div className={`text-xs px-2 py-1 rounded text-center font-semibold ${validationStatus
-                                                                                ? 'bg-green-100 text-green-700'
-                                                                                : 'bg-red-100 text-red-700'
+                                                                            <div className={`text-xs px-2 py-1 rounded-md text-center font-semibold ${validationStatus
+                                                                                ? 'bg-teal bg-opacity-20 text-teal border border-teal'
+                                                                                : 'bg-coral bg-opacity-20 text-coral border border-coral'
                                                                                 }`}>
                                                                                 {validationStatus ? '✓ Valid' : '✗ Invalid'}
                                                                             </div>
@@ -224,13 +220,22 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                         </div>
                     ) : (
                         <>
-                            <h3 className="text-xl font-bold mb-4">
-                                The game has been stopped by {stoppedBy}<br />
-                                {currentPlayer?.name}, you are now reviewing answers:
-                            </h3>
+                            <div className="bg-white bg-opacity-40 rounded-xl p-6 mb-6">
+                                <div className="flex items-center justify-center gap-4 mb-3">
+                                    <div className="h-px bg-gray-300 flex-1"></div>
+                                    <span className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Round Stopped</span>
+                                    <div className="h-px bg-gray-300 flex-1"></div>
+                                </div>
+                                <p className="text-center text-gray-700 mb-2">
+                                    <span className="font-bold text-coral">{stoppedBy}</span> completed all answers first!
+                                </p>
+                                <p className="text-center text-lg font-semibold text-gray-800">
+                                    Now reviewing all player answers for validity
+                                </p>
+                            </div>
 
                             {/* Matrix Table */}
-                            <div className="overflow-x-auto relative bg-white bg-opacity-40 rounded-lg">
+                            <div className="overflow-x-auto relative bg-white bg-opacity-40 rounded-xl">
                                 <table className="min-w-full">
                                     <thead>
                                         <tr className="border-b border-gray-400">
@@ -287,10 +292,10 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                                                             <button
                                                                                 onClick={() => handleCellReview(player.id, category, true)}
                                                                                 className={`
-                                                                                    text-xs px-2 py-1 rounded flex-1 transition-all
+                                                                                    text-xs px-2 py-1 rounded-md flex-1 transition-all duration-200 font-semibold
                                                                                     ${validationStatus === true
-                                                                                        ? 'bg-green-500 text-white font-semibold'
-                                                                                        : 'bg-gray-200 hover:bg-green-100 text-gray-700'
+                                                                                        ? 'bg-teal text-white hover:bg-opacity-90'
+                                                                                        : 'bg-white bg-opacity-60 hover:bg-teal hover:bg-opacity-20 text-gray-700 border border-gray-300'
                                                                                     }
                                                                                 `}
                                                                             >
@@ -299,10 +304,10 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                                                             <button
                                                                                 onClick={() => handleCellReview(player.id, category, false)}
                                                                                 className={`
-                                                                                    text-xs px-2 py-1 rounded flex-1 transition-all
+                                                                                    text-xs px-2 py-1 rounded-md flex-1 transition-all duration-200 font-semibold
                                                                                     ${validationStatus === false
-                                                                                        ? 'bg-red-500 text-white font-semibold'
-                                                                                        : 'bg-gray-200 hover:bg-red-100 text-gray-700'
+                                                                                        ? 'bg-coral text-white hover:bg-opacity-90'
+                                                                                        : 'bg-white bg-opacity-60 hover:bg-coral hover:bg-opacity-20 text-gray-700 border border-gray-300'
                                                                                     }
                                                                                 `}
                                                                             >
@@ -335,9 +340,17 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                                     Submit Review
                                 </Button>
                                 {!allValidated && (
-                                    <p className="text-sm text-gray-500 mt-2">
-                                        Click ✓ for valid or ✗ for invalid (click again to unset)
-                                    </p>
+                                    <div className="mt-3 space-y-1">
+                                        <p className="text-sm text-gray-600 font-medium">
+                                            How to validate:
+                                        </p>
+                                        <p className="text-sm text-gray-500">
+                                            ✓ Valid - Answer starts with the letter and fits the category
+                                        </p>
+                                        <p className="text-sm text-gray-500">
+                                            ✗ Invalid - Wrong letter, doesn't fit, or misspelled
+                                        </p>
+                                    </div>
                                 )}
                             </div>
                         </>
@@ -345,15 +358,22 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                 </div>
 
                 {/* Instructions */}
-                <div className="text-center text-sm text-gray-600 mt-6">
-                    <p>Empty answers automatically score 0 points</p>
-                    <p>Answers are valid if the majority votes them as valid</p>
+                <div className="bg-yellow bg-opacity-10 border border-yellow rounded-lg p-4 mt-6">
+                    <p className="text-sm text-gray-700 text-center">
+                        <span className="font-semibold">Scoring Rules:</span> Empty answers = 0 points •
+                        Valid answers = 1 point •
+                        Duplicate answers = 0 points
+                    </p>
+                    <p className="text-xs text-gray-600 text-center mt-1">
+                        Answers are validated by majority vote
+                    </p>
                 </div>
             </div>
+
             {/* Overlay */}
             {allReviewsWaiting && (
                 <div className="fixed inset-0 bg-gray-900/70 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center shadow-2xl">
+                    <div className="bg-white rounded-xl p-8 max-w-md mx-4 text-center shadow-2xl">
                         <div className="mb-4">
                             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-coral"></div>
                         </div>
@@ -379,7 +399,6 @@ export const ReviewPhase: FC<ReviewPhaseProps> = ({
                     </div>
                 </div>
             )}
-
-        </div>
+        </GameLayout>
     )
 }

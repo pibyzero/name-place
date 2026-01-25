@@ -56,19 +56,10 @@ export const CheckReadiness: FC<CheckReadinessProps> = ({
 
     if (!isReady) {
         return (
-            <GameLayout
-                header={
-                    <div className="text-center">
-                        <p className="text-sm text-gray-600 uppercase tracking-wide">
-                            Round {gameState.currentRound}
-                        </p>
-                    </div>
-                }
-                centerVertically
-            >
+            <GameLayout centerVertically>
                 <div className="w-full space-y-8">
                     {lastRoundLeaderboard && (
-                        <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
+                        <div className="bg-white bg-opacity-40 rounded-xl p-6 max-w-md mx-auto">
                             <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
                                 Round {gameState.currentRound - 1} Results
                             </h3>
@@ -137,19 +128,10 @@ export const CheckReadiness: FC<CheckReadinessProps> = ({
     const allReady = readyCount === totalPlayers
 
     return (
-        <GameLayout
-            header={
-                <div className="text-center">
-                    <p className="text-sm text-gray-600 uppercase tracking-wide">
-                        Round {gameState.currentRound}
-                    </p>
-                </div>
-            }
-            centerVertically
-        >
+        <GameLayout centerVertically>
             <div className="w-full space-y-8">
                 {lastRoundLeaderboard && (
-                    <div className="bg-white rounded-lg shadow-md p-6 max-w-md mx-auto">
+                    <div className="bg-white bg-opacity-40 rounded-xl p-6 max-w-md mx-auto">
                         <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
                             Last Round Results
                         </h3>
