@@ -52,13 +52,17 @@ export function useP2P() {
         const intervalId = setInterval(() => {
             let peers = peersRef.current || {}
             let peerIds = Object.keys(peers)
-            if (new Set(peerIds) === lastSyncedRef.current || peerIds.length === 0) {
-                return
+            const currentPeerSet = new Set(peerIds);
+            const lastSynced = lastSyncedRef.current;
+
+            if (currentPeerSet.size === lastSynced.size &&
+                [...currentPeerSet].every(id => lastSynced.has(id))) {
+                return; // Already synced, skip
             }
             Object.values(peers).filter(p => !!p.conn).forEach(p => {
                 p.conn.send({ type: 'peer-list', data: peerIds })
             })
-            lastSyncedRef.current = new Set(peerIds)
+            setLastSyncedPeerIds(currentPeerSet)
         }, PEER_SYNC_INTERVAL);
 
         return () => clearInterval(intervalId); // Cleanup on unmount
@@ -148,7 +152,6 @@ export function useP2P() {
 
         Object.entries(peers).forEach(async ([peerId, peerinfo]) => {
             let start = peerinfo.myEventsConsumed;
-            console.warn("events for peer start", start, peerId)
             // Get my events from last consumed index
             const myevs = myGameEvents.slice(start)
             const events = [...myevs]
