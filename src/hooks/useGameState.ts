@@ -38,7 +38,7 @@ export const useGameState = () => {
     const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set())
 
     const getPlayerName = useCallback((pid: string) => {
-        return gameState.players.filter(p => p.id == pid)[0].name
+        return gameState.players.filter(p => p.id == pid)[0]?.name
     }, [gameState])
 
     useEffect(() => {
