@@ -147,28 +147,29 @@ export function useP2P() {
     }, []);
 
     // Broadcast game events created by this node based on peer
-    const broadcastGameEvents = useCallback(() => {
+    const broadcastGameEvents = useCallback((immediateEvents?: GameEvent[]) => {
         let newPeers: Record<string, PeerInfo> = {};
 
         Object.entries(peers).forEach(async ([peerId, peerinfo]) => {
             let start = peerinfo.myEventsConsumed;
             // Get my events from last consumed index
-            const myevs = myGameEvents.slice(start)
-            const events = [...myevs]
+            const toSendEvents = immediateEvents || myGameEvents.slice(start)
             let ok = false;
-            if (events.length > 0) {
+            if (toSendEvents.length > 0) {
                 console.warn("sending game events to", peerId)
-                ok = await sendGameEvents(peerId, events);
+                ok = await sendGameEvents(peerId, toSendEvents);
                 console.warn("OK?", ok)
             }
             // update consumed events count only if send succeeded
             if (ok) {
-                let newPeerInfo: PeerInfo = { ...peerinfo, myEventsConsumed: myGameEvents.length };
+                let newPeerInfo: PeerInfo = {
+                    ...peerinfo,
+                    myEventsConsumed: peerinfo.myEventsConsumed + toSendEvents.length
+                };
                 newPeers[peerId] = newPeerInfo
             }
         })
         setPeers(prev => ({ ...prev, ...newPeers }))
-
     }, [peers, myGameEvents])
 
     // Relay events received from other peers

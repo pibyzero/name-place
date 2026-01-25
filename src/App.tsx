@@ -114,6 +114,7 @@ function App() {
     const onStartGame = useCallback(() => {
         let playerIndex = 0; // Game always starts with zero indexed player and everyone takes turn
         let ev = p2p.create.waitRoundReadinessEvent(playerIndex)
+        p2p.actions.broadcastGameEvents([ev])
         game.applyEvents([ev])
     }, [p2p, game])
 
@@ -123,15 +124,14 @@ function App() {
             submittedBy: p2p.state.player.id
         }
         let ev = p2p.create.submitRoundReadinessEvent(data)
+        p2p.actions.broadcastGameEvents([ev])
         game.applyEvent(ev)
-        p2p.actions.broadcastGameEvents()
     }, [p2p, game])
 
     const onSelectLetter = useCallback((letter: string) => {
         let ev = p2p.create.startRoundEvent(letter)
         console.warn("broadcasting start round event before applying to current state. game status:", gameState.status)
-        p2p.actions.broadcastGameEvents();
-        // maybe wait some sec just in case others are not synced
+        p2p.actions.broadcastGameEvents([ev]);
         game.applyEvents([ev])
     }, [p2p, game, gameState])
 
@@ -143,7 +143,7 @@ function App() {
         }
         let ev = p2p.create.stopRoundEvent(data)
         game.applyEvent(ev)
-        p2p.actions.broadcastGameEvents()
+        p2p.actions.broadcastGameEvents([ev])
     }, [p2p, game, gameState])
 
     const broadcastAnswers = useCallback((ans: PlayerAnswers) => {
@@ -155,7 +155,7 @@ function App() {
         }
         let ev = p2p.create.submitAnswersEvent(data)
         game.applyEvent(ev)
-        p2p.actions.broadcastGameEvents()
+        p2p.actions.broadcastGameEvents([ev])
     }, [p2p, game, gameState])
 
     const onSubmitReview = useCallback((answersReview: AnswersReview) => {
@@ -166,7 +166,7 @@ function App() {
         }
         let ev = p2p.create.submitReviewEvent(data)
         game.applyEvent(ev)
-        p2p.actions.broadcastGameEvents()
+        p2p.actions.broadcastGameEvents([ev])
     }, [p2p, game, gameState])
 
     return (
