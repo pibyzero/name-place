@@ -7,14 +7,12 @@ import { Button } from '../ui/Button'
 interface LetterSelectionProps {
     localState: LocalState
     onSelectLetter: (letter: string) => void
-    currentRound: number
     gameState: GameState
 }
 
 export const LetterSelection: FC<LetterSelectionProps> = ({
     localState,
     onSelectLetter,
-    currentRound,
     gameState
 }) => {
     let roundData = gameState.roundData;

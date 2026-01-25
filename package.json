@@ -1,30 +1,34 @@
 {
-  "name": "name-place",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
-    "peerjs": "^1.5.5",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3"
-  },
-  "devDependencies": {
-    "@types/react": "^19.2.8",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^4.3.3",
-    "autoprefixer": "^10.4.23",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.16",
-    "typescript": "^5.9.3",
-    "vite": "^4.5.5"
-  }
+    "name": "name-place",
+    "version": "1.0.0",
+    "description": "The classic Name Place game",
+    "homepage": "https://pibyzero.github.io/name-place",
+    "main": "index.js",
+    "scripts": {
+        "predeploy": "npm run build",
+        "deploy": "gh-pages -d dist",
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@tailwindcss/postcss": "^4.1.18",
+        "peerjs": "^1.5.5",
+        "react": "^19.2.3",
+        "react-dom": "^19.2.3"
+    },
+    "devDependencies": {
+        "@types/react": "^19.2.8",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^4.3.3",
+        "autoprefixer": "^10.4.23",
+        "gh-pages": "^6.3.0",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^3.4.16",
+        "typescript": "^5.9.3",
+        "vite": "^4.5.5"
+    }
 }

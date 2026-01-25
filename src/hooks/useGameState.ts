@@ -33,7 +33,7 @@ export interface GameActions {
 export const useGameState = () => {
     const [gameState, setGameState] = useState<GameState>(initialState)
     /// To store all applied game events
-    const [appliedEvents, setAppliedEvents] = useState<GameEvent[]>([]);
+    const [_appliedEvents, setAppliedEvents] = useState<GameEvent[]>([]);
     /// Index of applied game event ids
     const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set())
 

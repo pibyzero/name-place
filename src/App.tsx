@@ -190,7 +190,6 @@ function App() {
                 <LetterSelection
                     localState={p2p.state}
                     onSelectLetter={onSelectLetter}
-                    currentRound={gameState.currentRound}
                     gameState={gameState}
                 />
             )}
