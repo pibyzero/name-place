@@ -162,13 +162,30 @@ export const useGameState = () => {
             if (!prev.roundData) return prev
             console.warn("RECEIVED stop ANSWERS FROM ", gameState.players.filter(p => p.id == data.submittedBy)[0].name)
 
+            let stoppedBy = prev.roundData.stoppedBy
+            let stoppedAt = prev.roundData.stoppedAt
+            let answers = data.answers
+
+            // If someone hasn't already stopped earlier then just update, else check if this is earlier than the existing
+            if (!prev.roundData.stoppedBy) {
+                stoppedBy = data.submittedBy
+                stoppedAt = ev.timestamp
+            } else if (prev.roundData.stoppedAt && prev.roundData.stoppedAt >= ev.timestamp) {
+                stoppedBy = data.submittedBy
+                stoppedAt = ev.timestamp
+            }
+            // update the answer if not already submitted by the submitter
+            if (!!prev.roundData.answers[data.submittedBy]) {
+                answers = prev.roundData.answers[data.submittedBy]
+            }
+
             return {
                 ...prev,
                 roundData: {
                     ...prev.roundData,
-                    stoppedBy: data.submittedBy,
-                    stoppedAt: ev.timestamp,
-                    answers: { ...prev.roundData.answers, [data.submittedBy]: data.answers }
+                    stoppedBy,
+                    stoppedAt,
+                    answers: { ...prev.roundData.answers, [data.submittedBy]: answers }
                 }
             }
         })

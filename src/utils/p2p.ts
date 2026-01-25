@@ -3,7 +3,7 @@ import { VoidWithArg } from "../types/common";
 import { GameEvent, Player } from "../types/game";
 import { P2PMessage } from "../types/p2p";
 
-const USE_PROD = false;
+const USE_PROD = (import.meta.env.VITE_ENV || '').toLowerCase() == "prod";
 
 export function getRoomFromURL() {
     const hash = window.location.hash;
@@ -44,23 +44,23 @@ const prodConfig = {
             { urls: 'stun:stun.relay.metered.ca:80' },
             {
                 urls: 'turn:global.relay.metered.ca:80',
-                username: '1b6bf3d10c59125af303d465',
-                credential: 'H9EaxlQ4CaKIzTjg'
+                username: import.meta.env.VITE_TURN_USERNAME,
+                credential: import.meta.env.VITE_TURN_CREDENTIAL
             },
             {
                 urls: 'turn:global.relay.metered.ca:80?transport=tcp',
-                username: '1b6bf3d10c59125af303d465',
-                credential: 'H9EaxlQ4CaKIzTjg'
+                username: import.meta.env.VITE_TURN_USERNAME,
+                credential: import.meta.env.VITE_TURN_CREDENTIAL
             },
             {
                 urls: 'turn:global.relay.metered.ca:443?transport=tcp',
-                username: '1b6bf3d10c59125af303d465',
-                credential: 'H9EaxlQ4CaKIzTjg'
+                username: import.meta.env.VITE_TURN_USERNAME,
+                credential: import.meta.env.VITE_TURN_CREDENTIAL
             },
             {
                 urls: 'turn:global.relay.metered.ca:443',
-                username: '1b6bf3d10c59125af303d465',
-                credential: 'H9EaxlQ4CaKIzTjg'
+                username: import.meta.env.VITE_TURN_USERNAME,
+                credential: import.meta.env.VITE_TURN_CREDENTIAL
             },
         ],
         iceTransportPolicy: 'all'
@@ -68,8 +68,7 @@ const prodConfig = {
     debug: 2,
 };
 
-const localhost = '192.168.1.69';
-// const localhost = 'localhost';
+const localhost = 'localhost';
 
 const localConfig = {
     host: localhost,
