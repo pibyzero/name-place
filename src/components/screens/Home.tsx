@@ -27,7 +27,7 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
         const config: GameConfig = { maxPlayers, language, numRounds }
 
         onStart(trimmed, config);
-        setIsLoading(false);
+        // Keep loading state true until navigation happens
     }
 
     return (

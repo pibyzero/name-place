@@ -57,7 +57,7 @@ export const CheckReadiness: FC<CheckReadinessProps> = ({
     if (!isReady) {
         return (
             <GameLayout centerVertically>
-                <div className="w-full space-y-8">
+                <div className="w-full space-y-6 sm:space-y-8">
                     {lastRoundLeaderboard && (
                         <div className="bg-white bg-opacity-40 rounded-xl p-6 max-w-md mx-auto">
                             <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
@@ -90,15 +90,10 @@ export const CheckReadiness: FC<CheckReadinessProps> = ({
                         </div>
                     )}
 
-                    <div className="text-center space-y-3">
-                        <h2 className="text-4xl font-bold text-gray-800">
+                    <div className="text-center space-y-2 sm:space-y-3">
+                        <h2 className="text-3xl sm:text-4xl font-bold text-gray-800">
                             Ready for Round {gameState.roundData?.roundNumber}?
                         </h2>
-                        {readyCount > 0 && (
-                            <p className="text-gray-600">
-                                {readyCount} of {totalPlayers} {totalPlayers === 1 ? 'player' : 'players'} ready
-                            </p>
-                        )}
                     </div>
 
                     <div className="flex justify-center">
@@ -110,15 +105,20 @@ export const CheckReadiness: FC<CheckReadinessProps> = ({
                         </Button>
                     </div>
 
-                    <div className="space-y-3 max-w-md mx-auto">
-                        {sortedPlayers.map(player => (
-                            <PlayerStatusCard
-                                key={player.id}
-                                player={player}
-                                isChecked={roundData.readyPlayers.has(player.id)}
-                                isCurrentUser={player.id === localState.player.id}
-                            />
-                        ))}
+                    <div className="max-w-md mx-auto">
+                        <p className="text-center text-gray-600 mb-4">
+                            {readyCount} of {totalPlayers} {totalPlayers === 1 ? 'player' : 'players'} ready
+                        </p>
+                        <div className="space-y-3">
+                            {sortedPlayers.map(player => (
+                                <PlayerStatusCard
+                                    key={player.id}
+                                    player={player}
+                                    isChecked={roundData.readyPlayers.has(player.id)}
+                                    isCurrentUser={player.id === localState.player.id}
+                                />
+                            ))}
+                        </div>
                     </div>
                 </div>
             </GameLayout>
@@ -129,7 +129,7 @@ export const CheckReadiness: FC<CheckReadinessProps> = ({
 
     return (
         <GameLayout centerVertically>
-            <div className="w-full space-y-8">
+            <div className="w-full space-y-6 sm:space-y-8">
                 {lastRoundLeaderboard && (
                     <div className="bg-white bg-opacity-40 rounded-xl p-6 max-w-md mx-auto">
                         <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">
@@ -175,22 +175,24 @@ export const CheckReadiness: FC<CheckReadinessProps> = ({
                             <h2 className="text-3xl font-bold text-gray-800">
                                 Waiting for others...
                             </h2>
-                            <p className="text-gray-600">
-                                {readyCount} of {totalPlayers} {totalPlayers === 1 ? 'player' : 'players'} ready
-                            </p>
                         </>
                     )}
                 </div>
 
-                <div className="space-y-3 max-w-md mx-auto">
-                    {sortedPlayers.map(player => (
-                        <PlayerStatusCard
-                            key={player.id}
-                            player={player}
-                            isChecked={roundData.readyPlayers.has(player.id)}
-                            isCurrentUser={player.id === localState.player.id}
-                        />
-                    ))}
+                <div className="max-w-md mx-auto">
+                    <p className="text-center text-gray-600 mb-4">
+                        {readyCount} of {totalPlayers} {totalPlayers === 1 ? 'player' : 'players'} ready
+                    </p>
+                    <div className="space-y-3">
+                        {sortedPlayers.map(player => (
+                            <PlayerStatusCard
+                                key={player.id}
+                                player={player}
+                                isChecked={roundData.readyPlayers.has(player.id)}
+                                isCurrentUser={player.id === localState.player.id}
+                            />
+                        ))}
+                    </div>
                 </div>
 
                 {!allReady && (
