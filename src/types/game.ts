@@ -72,12 +72,20 @@ export interface GameState {
     roundData: RoundData | null // Current round data
     allRounds: RoundData[]
     timeRemaining: number
+    messages: Message[]
 }
 
 export interface RoundResult {
     round: number
     letter: string
     playerScores: PlayerScore[]
+}
+
+export interface Message {
+    id: string
+    sender: string
+    content: string
+    timestamp: number
 }
 
 // GAME EVENTS
@@ -93,6 +101,7 @@ export type GameEventType =
     | 'stop-round'
     | 'submit-answers'
     | 'submit-review'
+    | 'send-message'
 
 export interface GameEvent {
     type: GameEventType;
@@ -155,6 +164,11 @@ export interface SubmitAnswersEvent extends GameEvent {
 export interface SubmitReviewEvent extends GameEvent {
     type: 'submit-review'
     payload: ReviewData
+}
+
+export interface SendMessageEvent extends GameEvent {
+    type: 'send-message'
+    payload: Message
 }
 
 export interface AnswersData {

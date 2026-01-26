@@ -9,7 +9,9 @@ import {
     WaitRoundReadinessEvent,
     StartRoundEvent,
     StopRoundEvent,
-    SubmitReviewEvent
+    SubmitReviewEvent,
+    SendMessageEvent,
+    Message,
 } from '../types/game'
 import { DEFAULT_CATEGORIES, TIMER_DURATION } from '../utils/constants'
 
@@ -27,6 +29,7 @@ const initialState: GameState = {
         maxPlayers: 4,
         language: 'english'
     },
+    messages: []
 }
 
 export interface GameActions {
@@ -101,6 +104,8 @@ export function pureStateTransition(prev: GameState, ev: GameEvent): GameState {
             return handleSubmitAnswers(prev, ev)
         case 'submit-review':
             return handleSubmitReview(prev, ev as SubmitReviewEvent)
+        case 'send-message':
+            return handleSentMessage(prev, ev as SendMessageEvent)
         default:
             return prev
     }
@@ -342,6 +347,15 @@ const handleSubmitReview = (prev: GameState, ev: SubmitReviewEvent) => {
     return {
         ...prev,
         roundData: { ...prev.roundData, reviews: newReviews }
+    } as GameState
+}
+
+const handleSentMessage = (prev: GameState, ev: SendMessageEvent) => {
+    let msg = ev.payload as Message
+    if (prev.messages.map(m => m.id).includes(msg.id)) return prev
+    return {
+        ...prev,
+        messages: [...prev.messages, msg]
     } as GameState
 }
 

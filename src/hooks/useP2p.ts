@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { GameEvent, GameEventType, LocalState, Player, AnswersData, ReviewData, SubmitRoundReadinessData, GameConfig } from "../types/game"
+import { GameEvent, GameEventType, LocalState, Player, AnswersData, ReviewData, SubmitRoundReadinessData, GameConfig, Message } from "../types/game"
 import Peer, { DataConnection } from "peerjs";
 import { VoidWithArg } from "../types/common";
 import { P2PMessage, PeerInfo } from "../types/p2p";
@@ -192,6 +192,18 @@ export function useP2P() {
         })
     }, [sendGameEvents])
 
+    const createMessageEvent = useCallback((content: string) => {
+        let len = eventCounterRef.current || 0
+        let msgId = `${player?.id}-msg-${len}`
+        let message: Message = {
+            id: msgId,
+            content,
+            sender: player?.id || "--",
+            timestamp: new Date().getTime()
+        }
+        return createGameEvent('send-message', message)
+    }, [player, myGameEvents, createGameEvent])
+
     const me: Player | undefined = player
         ? {
             id: player.id,
@@ -237,8 +249,9 @@ export function useP2P() {
             startRoundEvent: (data: string) => createGameEvent('start-round', data),
             stopRoundEvent: (data: AnswersData) => createGameEvent('stop-round', data),
             submitAnswersEvent: (data: AnswersData) => createGameEvent('submit-answers', data),
-            submitReviewEvent: (data: ReviewData) => createGameEvent('submit-review', data)
-        }), []),
+            submitReviewEvent: (data: ReviewData) => createGameEvent('submit-review', data),
+            sendMessageEvent: (text: string) => createMessageEvent(text)
+        }), [player]),
         isInitialized,
         isHost: player?.isHost,
         initialize,

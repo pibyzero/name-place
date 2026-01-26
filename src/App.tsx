@@ -8,6 +8,7 @@ import { CheckReadiness } from './components/screens/CheckReadiness'
 import { useCallback, useEffect, useState, } from 'react'
 import { WaitingPeers } from './components/screens/WaitingPeers'
 import { GameStatusBar } from './components/ui/GameStatusBar'
+import { ChatUI } from './components/ui/ChatUI'
 import { generateRoomName, getRoomFromURL, getSeedPeerFromURL, roomNameFromSeedPeer } from './utils/p2p'
 import { useP2P } from './hooks/useP2p'
 import { DataConnection } from 'peerjs'
@@ -177,6 +178,14 @@ function App() {
         p2p.actions.broadcastGameEvents([ev])
     }, [p2p, game, gameState])
 
+    const onSendMessage = useCallback((message: string) => {
+        if (p2p.state?.player) {
+            const ev = p2p.create.sendMessageEvent(message)
+            game.applyEvent(ev)
+            p2p.actions.broadcastGameEvents([ev])
+        }
+    }, [p2p.state, p2p.create.sendMessageEvent, game, p2p.actions])
+
     return (
         <div className="min-h-screen bg-cream">
             <GameStatusBar gameState={gameState} localState={p2p.state} />
@@ -221,6 +230,16 @@ function App() {
                 <Leaderboard
                     localState={p2p.state}
                     gameState={gameState}
+                />
+            )}
+
+            {/* Chat UI - shows when game is initialized and player exists */}
+            {p2p.state?.player && gameState.status !== 'uninitialized' && (
+                <ChatUI
+                    gameState={gameState}
+                    messages={gameState.messages}
+                    currentPlayerId={p2p.state.player.id}
+                    onSendMessage={onSendMessage}
                 />
             )}
         </div>
