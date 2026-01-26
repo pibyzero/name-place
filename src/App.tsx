@@ -86,7 +86,9 @@ function App() {
         if (p2p.isInitialized) return;
         let seedPeer = getSeedPeerFromURL();
         let roomName = p2p.state.roomName || roomNameFromSeedPeer(seedPeer) || generateRoomName();
-        const id = `${roomName}-${Math.random().toString(16).slice(2, 2 + RAND_LEN)}`;
+        // If no seed peer provided, this is the host - use room name as peer ID
+        // Otherwise, add a suffix for uniqueness when joining
+        const id = seedPeer ? `${roomName}-${Math.random().toString(16).slice(2, 2 + RAND_LEN)}` : roomName;
         p2p.initialize(roomName, id, name, seedPeer)
         setConfig(config)
     }, [])

@@ -3,6 +3,7 @@ import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { GameLayout } from '../ui/GameLayout';
 import { GameConfig, Language } from '../../types/game';
+import { parseRoomCode } from '../../utils/p2p';
 
 
 interface HomeProps {
@@ -13,6 +14,8 @@ interface HomeProps {
 export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
     const [playerName, setPlayerName] = useState('')
     const [isLoading, setIsLoading] = useState(false);
+    const [roomCode, setRoomCode] = useState('');
+    const [roomCodeError, setRoomCodeError] = useState('');
 
     const [showConfig, setShowConfig] = useState(false);
     const [maxPlayers, setMaxPlayers] = useState(4);
@@ -22,10 +25,28 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
     const handleStart = () => {
         let trimmed = playerName.trim()
         if (isLoading || !trimmed) return;
+
+        // If room code is entered, validate and parse it
+        if (roomCode.trim() && !roomName) {
+            const parsed = parseRoomCode(roomCode.trim());
+            if (!parsed) {
+                setRoomCodeError('Invalid room code format');
+                return;
+            }
+
+            // Update the URL without reloading
+            window.location.hash = `#room/${parsed.roomName}?seed-peer=${parsed.seedPeer}`;
+
+            setIsLoading(true);
+            const config: GameConfig = { maxPlayers, language, numRounds }
+
+            // Directly call onStart - the app.tsx will pick up the seed peer from URL
+            onStart(trimmed, config);
+            return;
+        }
+
         setIsLoading(true);
-
         const config: GameConfig = { maxPlayers, language, numRounds }
-
         onStart(trimmed, config);
         // Keep loading state true until navigation happens
     }
@@ -59,6 +80,32 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                     />
 
                     {!roomName && (
+                        <>
+                            <div className="relative">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="flex-1 h-px bg-gray-300"></div>
+                                    <span className="text-xs uppercase tracking-wider text-gray-500">OR</span>
+                                    <div className="flex-1 h-px bg-gray-300"></div>
+                                </div>
+                                <Input
+                                    label="Have a room code?"
+                                    type="text"
+                                    placeholder="e.g. happy-tiger-a3f2"
+                                    value={roomCode}
+                                    onChange={(e) => {
+                                        setRoomCode(e.target.value);
+                                        setRoomCodeError('');
+                                    }}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+                                />
+                                {roomCodeError && (
+                                    <p className="text-sm text-red-500 mt-1">{roomCodeError}</p>
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {!roomName && !roomCode && (
                         <div>
                             <button
                                 type="button"
@@ -125,7 +172,7 @@ export const Home: FC<HomeProps> = ({ onInit: onStart, roomName }) => {
                         size="large"
                         isLoading={isLoading}
                     >
-                        {!roomName ? "Create a New Game" : "Join Game"}
+                        {roomName ? "Join Game" : roomCode ? "Join with Room Code" : "Create a New Game"}
                     </Button>
                 </div>
                 {/* Instructions */}

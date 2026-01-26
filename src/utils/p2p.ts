@@ -23,8 +23,15 @@ export function generateRoomName() {
 
 export function roomNameFromSeedPeer(seedPeer: string | undefined): string | undefined {
     if (seedPeer === undefined) return undefined
-    // TODO; check format
-    return seedPeer.split('-').slice(0, 2).join('-')
+    // If seed peer has 3+ segments, it's a joiner's ID (room-name-suffix)
+    // If it has exactly 3 segments, it's the host's ID (room name only)
+    const segments = seedPeer.split('-')
+    if (segments.length <= 3) {
+        // It's the host ID, which is the room name itself
+        return seedPeer
+    }
+    // It's a joiner ID, extract room name part
+    return segments.slice(0, 3).join('-')
 }
 
 export function getSeedPeerFromURL() {
@@ -33,8 +40,32 @@ export function getSeedPeerFromURL() {
     return match ? match[1] : undefined;
 }
 
-export function createURL(roomName: string, seedPeer: string) {
-    const url = `${window.location.origin}${window.location.pathname}#room/${roomName}?seed-peer=${seedPeer}`;
+// Parse room code input - could be just a code or a full URL
+export function parseRoomCode(input: string): { roomName: string, seedPeer: string } | null {
+    const trimmed = input.trim();
+
+    // Check if it's a full URL
+    if (trimmed.includes('#room/')) {
+        const roomMatch = trimmed.match(/#room\/([^?]+)/);
+        const seedMatch = trimmed.match(/seed-peer=([^&]+)/);
+        if (roomMatch && seedMatch) {
+            return { roomName: roomMatch[1], seedPeer: seedMatch[1] };
+        }
+    }
+
+    // Otherwise treat it as a direct room code (which is the host's peer ID)
+    // Valid room codes have format: adjective-noun-xxxx
+    const segments = trimmed.split('-');
+    if (segments.length === 3) {
+        return { roomName: trimmed, seedPeer: trimmed };
+    }
+
+    return null;
+}
+
+export function createURL(roomName: string, hostPeerId: string) {
+    // Since host peer ID is now the room name, we can use it directly
+    const url = `${window.location.origin}${window.location.pathname}#room/${roomName}?seed-peer=${hostPeerId}`;
     return url
 }
 

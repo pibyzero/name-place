@@ -14,9 +14,12 @@ const MIN_PLAYERS = 2;
 
 export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState, onStartGame }) => {
     const [copied, setCopied] = useState(false);
+    const [copiedCode, setCopiedCode] = useState(false);
 
     // Generate the URL once
     const url = useMemo(() => createURL(localState.roomName, localState.player.id), [localState]);
+    // Room code is now just the room name (host's peer ID)
+    const roomCode = localState.roomName;
 
     const connectedPeers = gameState.players.map(x => `${x.name} - ${x.id}`);
     const me = gameState.players.filter(x => x.id == localState.player.id)[0];
@@ -35,6 +38,16 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState, onS
             setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
         } catch (err) {
             console.error('Failed to copy URL:', err);
+        }
+    };
+
+    const handleCopyCode = async () => {
+        try {
+            await navigator.clipboard.writeText(roomCode);
+            setCopiedCode(true);
+            setTimeout(() => setCopiedCode(false), 2000); // Reset after 2 seconds
+        } catch (err) {
+            console.error('Failed to copy room code:', err);
         }
     };
 
@@ -64,28 +77,53 @@ export const WaitingPeers: FC<WaitingPeersProps> = ({ localState, gameState, onS
                     )}
                 </div>
 
-                {/* URL Section */}
+                {/* Room Code Section - Prominent Display */}
                 {me.isHost && (
-                    <div className="bg-white bg-opacity-40 rounded-xl p-6 space-y-4">
+                    <div className="bg-teal bg-opacity-20 rounded-xl p-6 space-y-4 border-2 border-teal border-opacity-30">
                         <h2 className="text-lg font-semibold text-gray-700">
-                            Game Room URL
+                            Room Code
                         </h2>
                         <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={url}
-                                readOnly
-                                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 bg-white bg-opacity-80 text-sm font-mono transition-all focus:outline-none focus:ring-2 focus:ring-coral focus:border-coral"
-                                onClick={(e) => e.currentTarget.select()}
-                            />
+                            <div className="flex-1 px-4 py-3 rounded-lg bg-white bg-opacity-80 text-xl font-bold text-center text-teal">
+                                {roomCode}
+                            </div>
                             <Button
-                                onClick={handleCopyUrl}
+                                onClick={handleCopyCode}
                                 className="whitespace-nowrap"
                             >
-                                {copied ? '✓ Copied!' : 'Copy URL'}
+                                {copiedCode ? '✓ Copied!' : 'Copy Code'}
                             </Button>
                         </div>
+                        <p className="text-sm text-gray-600">
+                            Share this code with friends - they can enter it directly on the home screen!
+                        </p>
                     </div>
+                )}
+
+                {/* URL Section - Secondary Option */}
+                {me.isHost && (
+                    <details className="bg-white bg-opacity-40 rounded-xl p-6">
+                        <summary className="cursor-pointer text-sm font-semibold text-gray-600 hover:text-gray-700">
+                            Or share full URL link
+                        </summary>
+                        <div className="mt-4 space-y-4">
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={url}
+                                    readOnly
+                                    className="flex-1 px-4 py-2 rounded-lg border border-gray-300 bg-white bg-opacity-80 text-sm font-mono transition-all focus:outline-none focus:ring-2 focus:ring-coral focus:border-coral"
+                                    onClick={(e) => e.currentTarget.select()}
+                                />
+                                <Button
+                                    onClick={handleCopyUrl}
+                                    className="whitespace-nowrap"
+                                >
+                                    {copied ? '✓ Copied!' : 'Copy URL'}
+                                </Button>
+                            </div>
+                        </div>
+                    </details>
                 )}
 
                 {/* Connected Peers Section */}
