@@ -84,6 +84,18 @@ export const useGameState = () => {
         })
     }, [])
 
+    const handleRemovePlayer = useCallback((ev: GameEvent) => {
+        setGameState(prev => {
+            let newplayers = prev.players.filter(p => p.id != ev.payload)
+            // TODO: check game state where people are waiting for submission threshold and update accordingly
+            return {
+                ...prev,
+                players: newplayers
+            }
+        })
+    }, [])
+
+
     const handleSetWaitingPeers = useCallback(() => {
         setGameState(prev => ({ ...prev, status: 'waiting-peers' }))
     }, [])
@@ -269,6 +281,9 @@ export const useGameState = () => {
                 break;
             case 'add-player':
                 handleAddPlayer(ev)
+                break;
+            case 'remove-player':
+                handleRemovePlayer(ev)
                 break;
             case 'set-waiting-peers':
                 handleSetWaitingPeers()

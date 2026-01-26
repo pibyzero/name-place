@@ -42,7 +42,12 @@ function App() {
                             p2p.actions.broadcastGameEvents()
                             conn.send({ type: 'peer-list', data: Object.keys(p2p.peersRef.current || {}) })
                         }
-                        p2p.createConnection(player.id, onConn)
+                        const onClose = (pid: string) => {
+                            const ev = p2p.create.removePlayerEvent(pid)
+                            game.applyEvent(ev)
+                            p2p.actions.broadcastGameEvents()
+                        }
+                        p2p.createConnection(player.id, onConn, onClose)
                     }
                     break;
                 case 'peer-list':

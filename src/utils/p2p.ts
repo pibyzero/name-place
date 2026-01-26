@@ -78,7 +78,12 @@ export function createPeer(id: string) {
     return peer
 }
 
-export function setupConnection(conn: DataConnection, handleMessage: (m: P2PMessage, f: string) => void, onOpen: VoidWithArg<DataConnection>) {
+export function setupConnection(
+    conn: DataConnection,
+    handleMessage: (m: P2PMessage, f: string) => void,
+    onOpen: VoidWithArg<DataConnection>,
+    onClose: VoidWithArg<string> = (_) => { },
+) {
     conn.on('open', () => {
         console.log('Connection established with:', conn.peer);
         onOpen(conn)
@@ -92,7 +97,7 @@ export function setupConnection(conn: DataConnection, handleMessage: (m: P2PMess
 
     conn.on('close', () => {
         console.log('[DEBUG] Connection closed with:', conn.peer);
-        // TODO: cleanup?
+        onClose(conn.peer)
     })
 
     conn.on('error', (err) => {

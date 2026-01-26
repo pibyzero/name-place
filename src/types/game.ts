@@ -84,6 +84,7 @@ export interface RoundResult {
 
 export type GameEventType =
     'add-player'
+    | 'remove-player'
     | 'init-game'
     | 'set-waiting-peers'
     | 'wait-round-readiness'
@@ -109,6 +110,12 @@ export interface AddPlayer extends GameEvent {
     type: 'add-player';
     payload: Player;
 }
+
+export interface RemovePlayer extends GameEvent {
+    type: 'remove-player';
+    payload: string;
+}
+
 
 export interface InitGameEvent extends GameEvent {
     type: 'init-game'

@@ -69,13 +69,20 @@ export function useP2P() {
     }, []);
 
 
-    const createConnection = useCallback((targetPeer: string, onOpen: VoidWithArg<DataConnection>) => {
+    const createConnection = useCallback((targetPeer: string, onOpen: VoidWithArg<DataConnection>, onClose: VoidWithArg<string> = () => { }) => {
         if (peersRef.current[targetPeer] !== undefined) return;
         const currentPeer = playerRef.current?.peer;
         if (!currentPeer || peersRef.current[targetPeer] !== undefined) return;
         console.warn("creating connection with", targetPeer);
         let conn = currentPeer.connect(targetPeer);
-        setupConnection(conn, handleMessage, onOpen);
+        const onCloseInner = (pid: string) => {
+            onClose(pid)
+            setPeers(prev => {
+                const { [pid]: removed, ...rest } = prev
+                return rest
+            })
+        }
+        setupConnection(conn, handleMessage, onOpen, onCloseInner);
         let peerInfo: PeerInfo = {
             id: targetPeer,
             conn,
@@ -185,7 +192,6 @@ export function useP2P() {
         })
     }, [sendGameEvents])
 
-
     const me: Player | undefined = player
         ? {
             id: player.id,
@@ -223,6 +229,7 @@ export function useP2P() {
         }), [relayGameEvents, broadcastGameEvents]),
         create: useMemo(() => ({
             initGameEvent: (config: GameConfig) => createGameEvent('init-game', config),
+            removePlayerEvent: (pid: string) => createGameEvent('remove-player', pid),
             addPlayerEvent: (player: Player) => createGameEvent('add-player', player),
             setWaitingPeersEvent: () => createGameEvent('set-waiting-peers', undefined),
             waitRoundReadinessEvent: (playerIdx: number) => createGameEvent('wait-round-readiness', playerIdx),
