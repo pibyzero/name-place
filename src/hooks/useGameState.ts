@@ -87,11 +87,50 @@ export const useGameState = () => {
     const handleRemovePlayer = useCallback((ev: GameEvent) => {
         setGameState(prev => {
             let newplayers = prev.players.filter(p => p.id != ev.payload)
-            // TODO: check game state where people are waiting for submission threshold and update accordingly
-            return {
-                ...prev,
-                players: newplayers
+
+            // If no players changed, return early
+            if (newplayers.length === prev.players.length) return prev
+
+            let newState = { ...prev, players: newplayers }
+
+            // Recalculate thresholds based on new player count
+            if (prev.roundData && newplayers.length > 0) {
+                const readyCount = prev.roundData.readyPlayers?.size || 0
+                const answersCount = Object.keys(prev.roundData.answers).length
+                const reviewsCount = Object.keys(prev.roundData.reviews).length
+
+                // Check if we now meet threshold for waiting-readiness -> round-ready
+                if (prev.status === 'waiting-readiness' && readyCount >= newplayers.length) {
+                    newState.status = 'round-ready'
+                }
+
+                // Check if we now meet threshold for round-started/stopped -> reviewing
+                if ((prev.status === 'round-started') && answersCount >= newplayers.length) {
+                    newState.status = 'reviewing'
+                }
+
+                // Check if we now meet threshold for reviewing -> next round/ended
+                if (prev.status === 'reviewing' && reviewsCount >= newplayers.length) {
+                    const nextRound = prev.currentRound + 1
+                    const isGameOver = prev.currentRound >= prev.config.numRounds
+
+                    newState = {
+                        ...newState,
+                        status: isGameOver ? 'ended' : 'waiting-readiness',
+                        currentRound: nextRound,
+                        allRounds: [...prev.allRounds, { ...prev.roundData, reviews: prev.roundData.reviews }],
+                        roundData: isGameOver ? prev.roundData : {
+                            turnPlayerIndex: (prev.roundData.turnPlayerIndex + 1) % newplayers.length,
+                            roundNumber: nextRound,
+                            answers: {},
+                            reviews: {},
+                            readyPlayers: new Set()
+                        }
+                    }
+                }
             }
+
+            return newState
         })
     }, [])
 
