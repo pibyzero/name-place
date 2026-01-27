@@ -9,7 +9,7 @@ interface ChatUIProps {
 }
 
 export const ChatUI = ({ messages, currentPlayerId, onSendMessage, gameState }: ChatUIProps) => {
-    const [isCollapsed, setIsCollapsed] = useState(false)
+    const [isCollapsed, setIsCollapsed] = useState(true)
     const [inputValue, setInputValue] = useState('')
     const [unreadCount, setUnreadCount] = useState(0)
     const [previousMessageCount, setPreviousMessageCount] = useState(0)
@@ -179,40 +179,40 @@ export const ChatUI = ({ messages, currentPlayerId, onSendMessage, gameState }: 
                     <div className="flex flex-col flex-1 min-h-0">
                         {/* Messages Container */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50 min-h-0">
-                        {messages.length === 0 ? (
-                            <div className="text-center text-gray-500 text-sm mt-8">
-                                No messages yet. Start a conversation!
-                            </div>
-                        ) : (
-                            messages.map((msg, index) => {
-                                const isCurrentUser = msg.sender === currentPlayerId
-                                return (
-                                    <div
-                                        key={index}
-                                        className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} animate-fade-in`}
-                                    >
-                                        <div className={`max-w-[70%] ${isCurrentUser
-                                            ? 'bg-teal text-white'
-                                            : 'bg-white border border-gray-200'
-                                            } rounded-lg py-1 px-2 shadow-sm`}>
-                                            {!isCurrentUser && (
-                                                <div className="text-xs font-bold text-charcoal">
-                                                    {getPlayerName(msg.sender)}
+                            {messages.length === 0 ? (
+                                <div className="text-center text-gray-500 text-sm mt-8">
+                                    No messages yet. Start a conversation!
+                                </div>
+                            ) : (
+                                messages.map((msg, index) => {
+                                    const isCurrentUser = msg.sender === currentPlayerId
+                                    return (
+                                        <div
+                                            key={index}
+                                            className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} animate-fade-in`}
+                                        >
+                                            <div className={`max-w-[70%] ${isCurrentUser
+                                                ? 'bg-teal text-white'
+                                                : 'bg-white border border-gray-200'
+                                                } rounded-lg py-1 px-2 shadow-sm`}>
+                                                {!isCurrentUser && (
+                                                    <div className="text-xs font-bold text-charcoal">
+                                                        {getPlayerName(msg.sender)}
+                                                    </div>
+                                                )}
+                                                <div className={`text-xs break-words ${isCurrentUser ? 'text-white' : 'text-charcoal'
+                                                    }`}>
+                                                    {msg.content}
                                                 </div>
-                                            )}
-                                            <div className={`text-xs break-words ${isCurrentUser ? 'text-white' : 'text-charcoal'
-                                                }`}>
-                                                {msg.content}
-                                            </div>
-                                            <div className={`text-xs ${isCurrentUser ? 'text-white text-opacity-70' : 'text-gray-300'
-                                                }`}>
-                                                {formatTime(new Date(msg.timestamp))}
+                                                <div className={`text-xs ${isCurrentUser ? 'text-white text-opacity-70' : 'text-gray-300'
+                                                    }`}>
+                                                    {formatTime(new Date(msg.timestamp))}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )
-                            })
-                        )}
+                                    )
+                                })
+                            )}
                             <div ref={messagesEndRef} />
                         </div>
 

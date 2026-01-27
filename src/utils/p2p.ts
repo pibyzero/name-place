@@ -4,6 +4,7 @@ import { GameEvent, Player } from "../types/game";
 import { P2PMessage } from "../types/p2p";
 
 const USE_PROD = (import.meta.env.VITE_ENV || '').toLowerCase() == "prod";
+const RAND_LEN = 4
 
 export function getRoomFromURL() {
     const hash = window.location.hash;
@@ -17,7 +18,7 @@ export function generateRoomName() {
     const nouns = ['tiger', 'ocean', 'mountain', 'forest', 'river', 'storm', 'eagle'];
     const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
     const noun = nouns[Math.floor(Math.random() * nouns.length)];
-    const random = Math.random().toString(16).slice(2, 2 + 4);
+    const random = Math.random().toString(16).slice(2, 2 + RAND_LEN);
     return `${adj}-${noun}-${random}`;
 }
 

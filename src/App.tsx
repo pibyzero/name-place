@@ -15,7 +15,7 @@ import { DataConnection } from 'peerjs'
 import { PlayerAnswers, AnswersData, AnswersReview, ReviewData, SubmitRoundReadinessData, GameConfig } from './types/game'
 import { GameEventMessage, JoinHandshakeMessage, PeerListMessage } from './types/p2p'
 
-const RAND_LEN = 5
+const SUFFIX_LEN = 6
 
 function App() {
     const { gameState, actions: game } = useGameState()
@@ -89,10 +89,10 @@ function App() {
         let roomName = p2p.state.roomName || roomNameFromSeedPeer(seedPeer) || generateRoomName();
         // If no seed peer provided, this is the host - use room name as peer ID
         // Otherwise, add a suffix for uniqueness when joining
-        const id = seedPeer ? `${roomName}-${Math.random().toString(16).slice(2, 2 + RAND_LEN)}` : roomName;
+        const id = seedPeer ? `${roomName}-${Math.random().toString(10).slice(2, 2 + SUFFIX_LEN)}` : roomName;
         p2p.initialize(roomName, id, name, seedPeer)
         setConfig(config)
-    }, [])
+    }, [p2p])
 
     // If p2p initializsed and is not a jost, do a join handshake
     useEffect(() => {

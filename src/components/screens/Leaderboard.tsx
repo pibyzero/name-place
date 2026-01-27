@@ -1,7 +1,8 @@
-import { FC, useMemo } from 'react'
+import { FC, useCallback, useMemo } from 'react'
 import { GameState, LocalState } from '../../types/game'
 import { calculateCumulativeScores, getLeaderboard } from '../../utils/scoring'
 import { GameLayout } from '../ui/GameLayout'
+import { Button } from '../ui/Button'
 
 interface LeaderboardProps {
     gameState: GameState
@@ -25,6 +26,15 @@ export const Leaderboard: FC<LeaderboardProps> = ({
             default: return null
         }
     }
+
+    const startNew = useCallback(() => {
+        if (localState.player.isHost) {
+            window.location.reload()
+        }
+        else {
+            window.location.href = window.location.href.split('#')[0]
+        }
+    }, [localState])
 
     return (
         <GameLayout maxWidth="md" centerVertically>
@@ -78,6 +88,16 @@ export const Leaderboard: FC<LeaderboardProps> = ({
                             </div>
                         );
                     })}
+                </div>
+                <div className="space-y-3">
+                    <Button
+                        onClick={startNew}
+                        className="w-full"
+                        size="large"
+                    >
+                        {localState.player.isHost ? "Start New Game" : "Go to Home"}
+                    </Button>
+
                 </div>
             </div>
         </GameLayout>

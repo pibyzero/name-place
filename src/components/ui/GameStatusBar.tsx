@@ -29,7 +29,7 @@ export const GameStatusBar: FC<GameStatusBarProps> = ({ gameState, localState })
             <div className="max-w-7xl mx-auto px-4 py-2">
                 <div className="flex items-center justify-between text-sm">
                     {/* Mobile: Single line with key info */}
-                    <div className="flex items-center gap-4 md:hidden">
+                    <div className="flex items-center gap-2 md:hidden">
                         <span className="font-semibold text-gray-700">{localState.player.name}</span>
                         {currentRound > 0 && (
                             <span className="text-gray-600">
@@ -37,6 +37,7 @@ export const GameStatusBar: FC<GameStatusBarProps> = ({ gameState, localState })
                             </span>
                         )}
                         <span className="text-coral font-medium">{statusText}</span>
+                        <span className="text-teal font-bold">{localState?.roomName}</span>
                     </div>
 
                     {/* Desktop: More detailed info */}
@@ -66,7 +67,11 @@ export const GameStatusBar: FC<GameStatusBarProps> = ({ gameState, localState })
                                 </span>
                             </div>
                         )}
-
+                        <div className="hidden md:block">
+                            <span className="px-3 py-1 bg-coral bg-opacity-10 text-coral font-semibold rounded-full text-xs uppercase tracking-wide">
+                                {statusText}
+                            </span>
+                        </div>
                         {gameState.roundData?.letter && (
                             <div className="flex items-center gap-2">
                                 <span className="text-gray-600">Letter:</span>
@@ -76,12 +81,13 @@ export const GameStatusBar: FC<GameStatusBarProps> = ({ gameState, localState })
                             </div>
                         )}
                     </div>
+                    {localState?.roomName && (
+                        <div className="hidden md:block flex items-center">
+                            <span className="text-teal font-semibold">{localState.roomName}</span>
+                        </div>
+                    )}
 
-                    <div className="hidden md:block">
-                        <span className="px-3 py-1 bg-coral bg-opacity-10 text-coral font-semibold rounded-full text-xs uppercase tracking-wide">
-                            {statusText}
-                        </span>
-                    </div>
+
                 </div>
             </div>
         </div>
