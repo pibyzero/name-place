@@ -73,12 +73,35 @@ export const useGameState = () => {
         setAppliedEvents(prev => [...prev, ev])
     }, [appliedEventIds])
 
+    // Compute vector clock from applied events
+    const getEventVectorClock = useCallback((): Record<string, number> => {
+        const vectorClock: Record<string, number> = {}
+
+        appliedEventIds.forEach(eventId => {
+            // Event ID format: "{peerId}-{sequenceNumber}"
+            const parts = eventId.split('-')
+            if (parts.length >= 2) {
+                const sequenceStr = parts[parts.length - 1]
+                const peerId = parts.slice(0, -1).join('-') // Handle peer IDs with dashes
+                const sequence = parseInt(sequenceStr, 10)
+
+                if (!isNaN(sequence)) {
+                    vectorClock[peerId] = Math.max(vectorClock[peerId] || -1, sequence)
+                }
+            }
+        })
+
+        return vectorClock
+    }, [appliedEventIds])
+
     return {
         gameState,
+        appliedEvents: _appliedEvents,
         actions: useMemo(() => ({
             applyEvent,
-            applyEvents: (evs: GameEvent[]) => evs.forEach(applyEvent)
-        }), [applyEvent])
+            applyEvents: (evs: GameEvent[]) => evs.forEach(applyEvent),
+            getEventVectorClock
+        }), [applyEvent, getEventVectorClock])
     }
 }
 

@@ -9,12 +9,14 @@ interface RoundPlayProps {
     gameState: GameState
     onClickStopRound: VoidWithArg<PlayerAnswers>
     broadcastAnswers: VoidWithArg<PlayerAnswers>
+    requestEventsSync: () => void
 }
 
 export const RoundPlay: FC<RoundPlayProps> = ({
     gameState,
     onClickStopRound,
-    broadcastAnswers
+    broadcastAnswers,
+    requestEventsSync
 }) => {
     const [myAnswers, setMyAnswers] = useState<Record<string, string>>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -27,6 +29,20 @@ export const RoundPlay: FC<RoundPlayProps> = ({
         setIsSubmitting(true)
         broadcastAnswers(myAnswers)
     }, [myAnswers, gameState, isSubmitting])
+
+    // Recovery mechanism: request event sync if stuck
+    useEffect(() => {
+        if (!gameState?.roundData?.stoppedBy) return // Round not stopped yet
+        if (gameState.status === 'reviewing') return // Already transitioned
+
+        // Set a timer to request sync if stuck for 5 seconds
+        const timer = setTimeout(() => {
+            console.warn('Stuck waiting for review phase, requesting event sync from peers')
+            requestEventsSync()
+        }, 5000)
+
+        return () => clearTimeout(timer)
+    }, [gameState?.roundData?.stoppedBy, gameState.status, requestEventsSync])
 
     if (!gameState?.roundData?.letter) {
         return (

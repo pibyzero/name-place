@@ -223,6 +223,35 @@ export function useP2P() {
         actions: useMemo(() => ({
             relayGameEvents,
             broadcastGameEvents,
+            requestEventsSync: (vectorClock: Record<string, number>) => {
+                // Broadcast sync request to all connected peers
+                Object.entries(peers).forEach(([peerId, peerInfo]) => {
+                    if (peerInfo.conn && peerInfo.conn.open) {
+                        const syncRequest: P2PMessage = {
+                            type: 'request-events-sync',
+                            data: {
+                                requesterId: player?.id || '',
+                                vectorClock
+                            }
+                        }
+                        peerInfo.conn.send(syncRequest)
+                        console.log(`Sent sync request to ${peerId} with vector clock:`, vectorClock)
+                    }
+                })
+            },
+            sendSyncResponse: (toPeerId: string, events: GameEvent[]) => {
+                if (events.length > 0 && peers[toPeerId]?.conn?.open) {
+                    const response: P2PMessage = {
+                        type: 'events-sync-response',
+                        data: {
+                            responderId: player?.id || '',
+                            events
+                        }
+                    }
+                    peers[toPeerId].conn.send(response)
+                    console.log(`Sent ${events.length} missing events to ${toPeerId}`)
+                }
+            },
             clearP2pMessages: () => setP2pMessages([]),
             setReceivedEventsFrom: (evs: GameEvent[], from: string) => {
                 setPeers(prev => {
@@ -238,7 +267,7 @@ export function useP2P() {
                     }
                 })
             }
-        }), [relayGameEvents, broadcastGameEvents]),
+        }), [relayGameEvents, broadcastGameEvents, peers, player]),
         create: useMemo(() => ({
             initGameEvent: (config: GameConfig) => createGameEvent('init-game', config),
             removePlayerEvent: (pid: string) => createGameEvent('remove-player', pid),

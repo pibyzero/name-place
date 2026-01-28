@@ -65,6 +65,41 @@ function App() {
 
                     p2p.actions.setReceivedEventsFrom(filtered, from)
                     break
+                case 'request-events-sync':
+                    // Someone is requesting missing events
+                    const { vectorClock } = m.data as { requesterId: string; vectorClock: Record<string, number> }
+
+                    // Filter events that the requester doesn't have
+                    const missingEvents = game.appliedEvents.filter(event => {
+                        const parts = event.id.split('-')
+                        if (parts.length >= 2) {
+                            const sequenceStr = parts[parts.length - 1]
+                            const eventPeerId = parts.slice(0, -1).join('-')
+                            const sequence = parseInt(sequenceStr, 10)
+
+                            if (!isNaN(sequence)) {
+                                const lastSeenSeq = vectorClock[eventPeerId] ?? -1
+                                return sequence > lastSeenSeq
+                            }
+                        }
+                        return false
+                    })
+
+                    // Send back the missing events
+                    p2p.actions.sendSyncResponse(from, missingEvents)
+                    break
+                case 'events-sync-response':
+                    // Received missing events from sync request
+                    const { events } = m.data as { responderId: string; events: GameEvent[] }
+
+                    // Apply only events we haven't seen
+                    const newEvents = events.filter(ev => !p2p.isAlreadyReceivedEventFrom(ev, from))
+                    if (newEvents.length > 0) {
+                        console.log(`Applying ${newEvents.length} missing events from sync response`)
+                        game.applyEvents(newEvents)
+                        p2p.actions.setReceivedEventsFrom(newEvents, from)
+                    }
+                    break
                 default:
                     break;
             }
@@ -186,6 +221,11 @@ function App() {
         }
     }, [p2p.state, p2p.create.sendMessageEvent, game, p2p.actions])
 
+    const requestEventsSync = useCallback(() => {
+        const vectorClock = game.actions.getEventVectorClock()
+        p2p.actions.requestEventsSync(vectorClock)
+    }, [game.actions, p2p.actions])
+
     return (
         <div className="min-h-screen bg-cream">
             <GameStatusBar gameState={gameState} localState={p2p.state} />
@@ -215,6 +255,7 @@ function App() {
                     gameState={gameState}
                     onClickStopRound={onStopRound}
                     broadcastAnswers={broadcastAnswers}
+                    requestEventsSync={requestEventsSync}
                 />
             )}
 
