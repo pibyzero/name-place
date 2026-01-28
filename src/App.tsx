@@ -12,13 +12,13 @@ import { ChatUI } from './components/ui/ChatUI'
 import { generateRoomName, getRoomFromURL, getSeedPeerFromURL, roomNameFromSeedPeer } from './utils/p2p'
 import { useP2P } from './hooks/useP2p'
 import { DataConnection } from 'peerjs'
-import { PlayerAnswers, AnswersData, AnswersReview, ReviewData, SubmitRoundReadinessData, GameConfig } from './types/game'
+import { PlayerAnswers, AnswersData, AnswersReview, ReviewData, SubmitRoundReadinessData, GameConfig, GameEvent } from './types/game'
 import { GameEventMessage, JoinHandshakeMessage, PeerListMessage } from './types/p2p'
 
 const SUFFIX_LEN = 6
 
 function App() {
-    const { gameState, actions: game } = useGameState()
+    const { gameState, actions: game, appliedEvents } = useGameState()
     const p2p = useP2P();
     const [config, setConfig] = useState<GameConfig>();
 
@@ -70,7 +70,7 @@ function App() {
                     const { vectorClock } = m.data as { requesterId: string; vectorClock: Record<string, number> }
 
                     // Filter events that the requester doesn't have
-                    const missingEvents = game.appliedEvents.filter(event => {
+                    const missingEvents = appliedEvents.filter(event => {
                         const parts = event.id.split('-')
                         if (parts.length >= 2) {
                             const sequenceStr = parts[parts.length - 1]
@@ -106,7 +106,7 @@ function App() {
         })
         p2p.actions.clearP2pMessages()
 
-    }, [p2p.p2pMessages, game, p2p.actions, p2p.isAlreadyReceivedEventFrom, p2p.state.player, p2p.create, p2p.createConnection, p2p.peersRef])
+    }, [p2p.p2pMessages, game, p2p.actions, p2p.isAlreadyReceivedEventFrom, p2p.state.player, p2p.create, p2p.createConnection, p2p.peersRef, appliedEvents])
 
     // Set timer to periodically broadcast unsynced msgs
     useEffect(() => {
@@ -222,9 +222,9 @@ function App() {
     }, [p2p.state, p2p.create.sendMessageEvent, game, p2p.actions])
 
     const requestEventsSync = useCallback(() => {
-        const vectorClock = game.actions.getEventVectorClock()
+        const vectorClock = game.getEventVectorClock()
         p2p.actions.requestEventsSync(vectorClock)
-    }, [game.actions, p2p.actions])
+    }, [game, p2p.actions])
 
     return (
         <div className="min-h-screen bg-cream">

@@ -225,6 +225,7 @@ export const ChatUI = ({ messages, currentPlayerId, onSendMessage, gameState }: 
                                     value={inputValue}
                                     onChange={(e) => setInputValue(e.target.value)}
                                     onKeyPress={handleKeyPress}
+                                    autoFocus
                                     placeholder="Type a message..."
                                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent text-sm bg-white"
                                 />
