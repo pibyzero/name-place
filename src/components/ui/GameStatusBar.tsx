@@ -73,7 +73,7 @@ export const GameStatusBar: FC<GameStatusBarProps> = ({ gameState, localState })
                         <Button
                             onClick={handleExitGame}
                             size="small"
-                            variant="ghost"
+                            variant="secondary"
                             className="p-1.5"
                             title={localState.player.isHost ? "Start New Game" : "Exit to Home"}
                         >
@@ -128,7 +128,7 @@ export const GameStatusBar: FC<GameStatusBarProps> = ({ gameState, localState })
                             <Button
                                 onClick={handleExitGame}
                                 size="small"
-                                variant="ghost"
+                                variant="secondary"
                                 className="flex items-center gap-1.5 px-2 py-1 text-coral opacity-70 hover:opacity-100 transition-opacity"
                                 title={localState.player.isHost ? "Start New Game" : "Exit to Home"}
                             >
