@@ -81,13 +81,33 @@ sequenceDiagram
 - **Deduplication:** applied event IDs stored in a `Set` — prevents double-application
 - **Recovery:** if a peer suspects missing events, it sends `request-events-sync` with its vector clock; the responder replies with any events the requester hasn't seen
 
+### Pending Buffer
+
+Events that arrive out of order (e.g. `submit-round-readiness` before `wait-round-readiness`) are not discarded. Instead, `pureStateTransition` returns `null` for ordering rejections (vs `prev` for legitimate no-ops like duplicates). Rejected events go into a **priority-sorted pending buffer** and are retried after each successful apply.
+
+Events are sorted by game-flow priority before retry:
+
+| Priority | Event Types |
+|---|---|
+| 0 | `send-message`, `remove-player` (independent) |
+| 1–2 | `init-game`, `add-player` |
+| 3–5 | `set-waiting-peers`, `wait-round-readiness`, `submit-round-readiness` |
+| 6–8 | `start-round`, `submit-answers`/`stop-round`, `submit-review` |
+
+Tiebreaker within same priority: timestamp. Pending events expire after 30 seconds.
+
 ```mermaid
-flowchart LR
-    A[Receive event] --> B{Already applied?}
-    B -->|Yes| C[Drop]
-    B -->|No| D[Apply to state]
-    D --> E[Add ID to applied set]
-    D --> F[Update vector clock]
+flowchart TD
+    A[Receive events] --> B[Merge with pending buffer]
+    B --> C[Dedup + sort by priority]
+    C --> D{Try apply}
+    D -->|null — ordering| E[Keep in pending]
+    D -->|prev — dedup/stale| F[Mark applied, drop]
+    D -->|new state| G[Mark applied, update state]
+    G --> H{More pending?}
+    H -->|Yes| D
+    H -->|No| I[Done — render]
+    E --> H
 ```
 
 ## P2P Message Types

@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import {
     GameState,
     GameEvent,
     AnswersData,
     GameStatus,
+    GameEventType,
     ReviewData,
     SubmitRoundReadinessData,
     WaitRoundReadinessEvent,
@@ -32,18 +33,45 @@ const initialState: GameState = {
     messages: []
 }
 
+// Events are retried in this order when buffered.
+// Lower number = higher priority = tried first.
+const EVENT_PRIORITY: Record<GameEventType, number> = {
+    'send-message': 0,
+    'remove-player': 0,
+    'init-game': 1,
+    'add-player': 2,
+    'set-waiting-peers': 3,
+    'wait-round-readiness': 4,
+    'submit-round-readiness': 5,
+    'start-round': 6,
+    'submit-answers': 7,
+    'stop-round': 7,
+    'submit-review': 8,
+}
+
+// Drop pending events older than this to prevent unbounded growth
+const PENDING_TTL_MS = 30_000
+
 export interface GameActions {
     applyEvent: (ev: GameEvent) => void
     applyEvents: (evs: GameEvent[]) => void
 }
 
 export const useGameState = () => {
+    // React state for rendering
     const [gameState, setGameState] = useState<GameState>(initialState)
-    /// To store all applied game events
-    const [_appliedEvents, setAppliedEvents] = useState<GameEvent[]>([]);
-    /// Index of applied game event ids
-    const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set())
 
+    // Refs for synchronous access (avoids stale closures and side effects in state updaters)
+    const gameStateRef = useRef<GameState>(initialState)
+    const appliedEventIdsRef = useRef<Set<string>>(new Set())
+    const appliedEventsRef = useRef<GameEvent[]>([])
+    const pendingEventsRef = useRef<GameEvent[]>([])
+
+    // Keep ref and state in sync for rendering
+    const updateGameState = useCallback((newState: GameState) => {
+        gameStateRef.current = newState
+        setGameState(newState)
+    }, [])
 
     useEffect(() => {
         const seen = new Set<string>();
@@ -54,30 +82,76 @@ export const useGameState = () => {
         });
 
         if (dedupedPlayers.length !== gameState.players.length) {
-            setGameState(prev => ({ ...prev, players: dedupedPlayers }));
+            const deduped = { ...gameState, players: dedupedPlayers }
+            gameStateRef.current = deduped
+            setGameState(deduped)
         }
     }, [gameState.players]);
 
+    // Core event processor: merges incoming events with pending buffer,
+    // sorts by game-flow priority, and applies in a loop until no more can drain.
+    const processEvents = useCallback((incomingEvents: GameEvent[]) => {
+        const appliedIds = appliedEventIdsRef.current
+        let state = gameStateRef.current
 
-    const applyEvent = useCallback((ev: GameEvent) => {
-        // Don't apply already applied event
-        if (appliedEventIds.has(ev.id)) return
+        // Merge incoming with pending, dedup, sort by (type_priority, timestamp)
+        const allEvents = [...pendingEventsRef.current, ...incomingEvents]
+            .filter(ev => !appliedIds.has(ev.id))
+            .sort((a, b) => {
+                const pa = EVENT_PRIORITY[a.type] ?? 99
+                const pb = EVENT_PRIORITY[b.type] ?? 99
+                if (pa !== pb) return pa - pb
+                return a.timestamp - b.timestamp
+            })
 
-        setGameState(prev => pureStateTransition(prev, ev))
+        const newlyApplied: GameEvent[] = []
+        let changed = true
+        let candidates = allEvents
 
-        setAppliedEventIds(prev => {
-            let newevs = new Set(prev)
-            newevs.add(ev.id)
-            return newevs
-        })
-        setAppliedEvents(prev => [...prev, ev])
-    }, [appliedEventIds])
+        // Keep looping until a full pass applies nothing
+        while (changed) {
+            changed = false
+            const stillPending: GameEvent[] = []
+
+            for (const ev of candidates) {
+                if (appliedIds.has(ev.id)) continue
+                const next = pureStateTransition(state, ev)
+                if (next === null) {
+                    // Guard rejected due to ordering — buffer for retry
+                    stillPending.push(ev)
+                } else {
+                    state = next
+                    appliedIds.add(ev.id)
+                    newlyApplied.push(ev)
+                    changed = true
+                }
+            }
+            candidates = stillPending
+        }
+
+        // Drop expired pending events
+        const now = Date.now()
+        pendingEventsRef.current = candidates.filter(
+            ev => now - ev.timestamp < PENDING_TTL_MS
+        )
+
+        if (pendingEventsRef.current.length > 0) {
+            console.warn(`[GameState] ${pendingEventsRef.current.length} event(s) pending:`,
+                pendingEventsRef.current.map(ev => ev.type))
+        }
+
+        // Update applied events list and trigger re-render
+        if (newlyApplied.length > 0) {
+            appliedEventsRef.current = [...appliedEventsRef.current, ...newlyApplied]
+            updateGameState(state)
+        }
+    }, [updateGameState])
 
     // Compute vector clock from applied events
     const getEventVectorClock = useCallback((): Record<string, number> => {
         const vectorClock: Record<string, number> = {}
 
-        appliedEventIds.forEach(eventId => {
+        appliedEventIdsRef.current.forEach(eventId => {
             // Event ID format: "{peerId}-{sequenceNumber}"
             const parts = eventId.split('-')
             if (parts.length >= 2) {
@@ -92,20 +166,23 @@ export const useGameState = () => {
         })
 
         return vectorClock
-    }, [appliedEventIds])
+    }, [])
 
     return {
         gameState,
-        appliedEvents: _appliedEvents,
+        appliedEvents: appliedEventsRef.current,
         actions: useMemo(() => ({
-            applyEvent,
-            applyEvents: (evs: GameEvent[]) => evs.forEach(applyEvent),
+            applyEvent: (ev: GameEvent) => processEvents([ev]),
+            applyEvents: (evs: GameEvent[]) => processEvents(evs),
             getEventVectorClock
-        }), [applyEvent, getEventVectorClock])
+        }), [processEvents, getEventVectorClock])
     }
 }
 
-export function pureStateTransition(prev: GameState, ev: GameEvent): GameState {
+// Returns the new state on success, or null if the event was rejected
+// due to ordering (state not ready yet — should be buffered and retried).
+// Returns prev (unchanged) for legitimate no-ops like duplicates or stale data.
+export function pureStateTransition(prev: GameState, ev: GameEvent): GameState | null {
     switch (ev.type) {
         case 'init-game':
             return handleInitGame(prev, ev)
@@ -134,13 +211,11 @@ export function pureStateTransition(prev: GameState, ev: GameEvent): GameState {
     }
 }
 
-const handleInitGame = (prev: GameState, ev: GameEvent) => {
-    // TODO: this is a hack, it should only be 'uninitialized', but ordering is not maintained so there's some issue
+const handleInitGame = (prev: GameState, ev: GameEvent): GameState | null => {
     if (!['uninitialized', 'waiting-peers'].includes(prev.status)) {
-        console.warn("Initing uninitialized game")
-        return prev
+        // State is not ready for init — buffer for retry
+        return null
     }
-    console.warn("APPLYING config", ev.payload)
     return {
         ...prev,
         status: 'waiting-peers',
@@ -148,8 +223,12 @@ const handleInitGame = (prev: GameState, ev: GameEvent) => {
     } as GameState
 };
 
-const handleAddPlayer = (prev: GameState, ev: GameEvent) => {
-    if (!['waiting-peers', 'uninitialized'].includes(prev.status)) return prev
+const handleAddPlayer = (prev: GameState, ev: GameEvent): GameState | null => {
+    if (!['waiting-peers', 'uninitialized'].includes(prev.status)) {
+        // Game has moved past the join phase — buffer in case init-game hasn't arrived yet
+        return null
+    }
+    // Player already exists — legitimate dedup, not an ordering issue
     if (prev.players.map(x => x.id).includes(ev.payload.id)) return prev
 
     let newplayers = [...prev.players, ev.payload]
@@ -160,7 +239,7 @@ const handleAddPlayer = (prev: GameState, ev: GameEvent) => {
     } as GameState
 }
 
-const handleRemovePlayer = (prev: GameState, ev: GameEvent) => {
+const handleRemovePlayer = (prev: GameState, ev: GameEvent): GameState | null => {
     let newplayers = prev.players.filter(p => p.id != ev.payload)
 
     // If no players changed, return early
@@ -208,11 +287,11 @@ const handleRemovePlayer = (prev: GameState, ev: GameEvent) => {
     return newState
 }
 
-const handleSetWaitingPeers = (prev: GameState) => {
+const handleSetWaitingPeers = (prev: GameState): GameState | null => {
     return { ...prev, status: 'waiting-peers' } as GameState
 }
 
-const handleWaitReadiness = (prev: GameState, ev: WaitRoundReadinessEvent) => {
+const handleWaitReadiness = (prev: GameState, ev: WaitRoundReadinessEvent): GameState | null => {
     return {
         ...prev,
         status: 'waiting-readiness',
@@ -226,21 +305,21 @@ const handleWaitReadiness = (prev: GameState, ev: WaitRoundReadinessEvent) => {
     } as GameState
 }
 
-const handleSubmitRoundReadiness = (prev: GameState, ev: GameEvent) => {
+const handleSubmitRoundReadiness = (prev: GameState, ev: GameEvent): GameState | null => {
     let data = ev.payload as SubmitRoundReadinessData
     if (prev.status !== 'waiting-readiness') {
-        console.warn("Received round readiness status when game is not waiing for readiness. ignoring")
-        return prev
+        // Not in readiness phase yet — buffer for retry
+        return null
     }
     if (!prev.roundData) {
-        console.warn("Invalid state of game: roundData not present. aborting event")
-        return prev
+        // roundData not initialized yet — buffer for retry
+        return null
     }
     let rd = prev.roundData
-    let readyPlayers = rd?.readyPlayers
-    readyPlayers?.add(data.submittedBy)
+    let readyPlayers = new Set(rd.readyPlayers)
+    readyPlayers.add(data.submittedBy)
     let st = prev.status as GameStatus
-    if (readyPlayers?.size == prev.players.length) {
+    if (readyPlayers.size == prev.players.length) {
         st = 'round-ready'
     }
     return {
@@ -253,16 +332,15 @@ const handleSubmitRoundReadiness = (prev: GameState, ev: GameEvent) => {
     }
 }
 
-const handleStartRound = (prev: GameState, ev: StartRoundEvent) => {
-    // TODO: strictly speaking the `round-ready` is the only valid status, but this needs more thought
+const handleStartRound = (prev: GameState, ev: StartRoundEvent): GameState | null => {
     const validPrevStates: GameStatus[] = ['waiting-readiness', 'round-ready'];
     if (!validPrevStates.includes(prev.status)) {
-        console.warn(`Received start round when the game state is ${prev.status}. Ignoring`)
-        return prev
+        // Not in a state where round can start — buffer for retry
+        return null
     }
     if (!prev.roundData) {
-        console.warn("Invalid 'start-round' event received. Ignoring")
-        return prev
+        // roundData not initialized yet — buffer for retry
+        return null
     }
 
     return {
@@ -272,14 +350,16 @@ const handleStartRound = (prev: GameState, ev: StartRoundEvent) => {
     } as GameState
 }
 
-const handleStopRound = (prev: GameState, ev: StopRoundEvent) => {
+const handleStopRound = (prev: GameState, ev: StopRoundEvent): GameState | null => {
     let data = ev.payload as AnswersData;
+    // Wrong round — stale event, not an ordering issue
     if (prev.currentRound !== data.round) {
-        console.warn(`Received invalid round ${data.round} instead of ${prev.currentRound}. Ignoring event.`)
         return prev
     }
-    if (!prev.roundData) return prev
-    console.warn("RECEIVED stop ANSWERS FROM ", prev.players.filter(p => p.id == data.submittedBy)[0].name)
+    if (!prev.roundData) {
+        // roundData not initialized yet — buffer for retry
+        return null
+    }
 
     let stoppedBy = prev.roundData.stoppedBy
     let stoppedAt = prev.roundData.stoppedAt
@@ -297,34 +377,36 @@ const handleStopRound = (prev: GameState, ev: StopRoundEvent) => {
     if (!!prev.roundData.answers[data.submittedBy]) {
         answers = prev.roundData.answers[data.submittedBy]
     }
-    const newAnswers = { ...prev.roundData.answers, [data.submittedBy]: data.answers }
+    const newAnswers = { ...prev.roundData.answers, [data.submittedBy]: answers }
     const status = Object.keys(newAnswers).length === prev.players.length ? 'reviewing' : prev.status
 
     return {
         ...prev,
+        status,  // FIX: status at top level, not inside roundData
         roundData: {
             ...prev.roundData,
-            status,
             stoppedBy,
             stoppedAt,
-            answers: { ...prev.roundData.answers, [data.submittedBy]: answers }
+            answers: newAnswers
         }
     } as GameState
 }
 
-const handleSubmitAnswers = (prev: GameState, ev: GameEvent) => {
+const handleSubmitAnswers = (prev: GameState, ev: GameEvent): GameState | null => {
     let submitData = ev.payload as AnswersData;
+    // Wrong round — stale event, not an ordering issue
     if (prev.currentRound !== submitData.round) {
-        console.warn(`Received invalid round ${submitData.round} instead of ${prev.currentRound}. Ignoring event.`)
         return prev
     }
-    if (!prev.roundData) return prev
+    if (!prev.roundData) {
+        // roundData not initialized yet — buffer for retry
+        return null
+    }
+    // Already submitted — legitimate dedup
     if (!!prev.roundData.answers[submitData.submittedBy]) {
-        console.warn(`Received re-submitted answers by ${getPlayerName(submitData.submittedBy, prev)}. Ignoring event.`)
         return prev
     }
 
-    console.warn("RECEIVED ANSWERS FROM ", prev.players.filter(p => p.id == submitData.submittedBy)[0].name)
     const newAnswers = { ...prev.roundData.answers, [submitData.submittedBy]: submitData.answers }
     const status = Object.keys(newAnswers).length === prev.players.length ? 'reviewing' : prev.status
 
@@ -335,15 +417,18 @@ const handleSubmitAnswers = (prev: GameState, ev: GameEvent) => {
     }
 }
 
-const handleSubmitReview = (prev: GameState, ev: SubmitReviewEvent) => {
+const handleSubmitReview = (prev: GameState, ev: SubmitReviewEvent): GameState | null => {
     const reviewData = ev.payload as ReviewData
+    // Wrong round — stale event, not an ordering issue
     if (prev.currentRound !== reviewData.round) {
-        console.warn(`Received invalid round ${reviewData.round} instead of ${prev.currentRound}. Ignoring event.`)
         return prev
     }
-    if (!prev.roundData) return prev
+    if (!prev.roundData) {
+        // roundData not initialized yet — buffer for retry
+        return null
+    }
+    // Already submitted — legitimate dedup
     if (!!prev.roundData.reviews[reviewData.submittedBy]) {
-        console.warn(`Received re-submitted review by player ${reviewData.submittedBy}. Ignoring event.`)
         return prev
     }
 
@@ -373,16 +458,12 @@ const handleSubmitReview = (prev: GameState, ev: SubmitReviewEvent) => {
     } as GameState
 }
 
-const handleSentMessage = (prev: GameState, ev: SendMessageEvent) => {
+const handleSentMessage = (prev: GameState, ev: SendMessageEvent): GameState | null => {
     let msg = ev.payload as Message
+    // Duplicate message — legitimate dedup
     if (prev.messages.map(m => m.id).includes(msg.id)) return prev
     return {
         ...prev,
         messages: [...prev.messages, msg]
     } as GameState
 }
-
-const getPlayerName = (pid: string, prev: GameState) => {
-    return prev.players.filter(p => p.id == pid)[0]?.name
-}
-
