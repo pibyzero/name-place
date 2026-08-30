@@ -17,6 +17,12 @@ import { GameEventMessage, JoinHandshakeMessage, PeerListMessage } from './types
 
 const SUFFIX_LEN = 6
 
+const HEARTBEAT_INTERVAL = 5000 // ms
+const INACTIVE_PEER_TIMEOUT = 60_000 // ms without a pong before a peer is considered dead
+// Statuses that block progress until every player acts — a silent peer here
+// would otherwise wedge the round forever.
+const BLOCKING_STATUSES = new Set(['waiting-peers', 'waiting-readiness', 'round-ready', 'round-started', 'reviewing'])
+
 function App() {
     const { gameState, actions: game, appliedEvents } = useGameState()
     const p2p = useP2P();
@@ -117,6 +123,24 @@ function App() {
 
         return () => clearInterval(intervalId); // Cleanup on unmount
     }, [p2p.myGameEvents, p2p.actions]);
+
+    // Host heartbeat: ping all peers and evict peers that stop responding
+    // during phases that block on every player (prevents permanently wedged rounds).
+    useEffect(() => {
+        if (!p2p.isInitialized || !p2p.isHost) return
+        const intervalId = setInterval(() => {
+            p2p.actions.pingAll()
+            if (!BLOCKING_STATUSES.has(gameState.status)) return
+            p2p.actions.getInactivePeers(INACTIVE_PEER_TIMEOUT).forEach(pid => {
+                console.warn(`Removing unresponsive peer ${pid}`)
+                const ev = p2p.create.removePlayerEvent(pid)
+                game.applyEvent(ev)
+                p2p.actions.broadcastGameEvents([ev])
+            })
+        }, HEARTBEAT_INTERVAL);
+
+        return () => clearInterval(intervalId); // Cleanup on unmount
+    }, [p2p.isInitialized, p2p.isHost, gameState.status, game, p2p.actions, p2p.create]);
 
     const onInit = useCallback((name: string, config: GameConfig) => {
         if (p2p.isInitialized) return;
