@@ -2,7 +2,7 @@ import { DataConnection } from "peerjs";
 import { GameEvent, Player } from "./game";
 
 export interface P2PMessage {
-    type: 'join-handshake' | 'handshake' | 'peer-list' | 'game-events' | 'request-events-sync' | 'events-sync-response';
+    type: 'join-handshake' | 'handshake' | 'peer-list' | 'game-events' | 'request-events-sync' | 'events-sync-response' | 'ping' | 'pong';
     data: any;
 }
 

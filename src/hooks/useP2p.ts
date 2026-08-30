@@ -40,6 +40,8 @@ export function useP2P() {
     const peersRef = useRef(peers);
     const lastSyncedRef = useRef(lastSyncedPeerIds);
     const eventCounterRef = useRef(0)
+    // Timestamp of the last 'pong' received from each peer (for liveness detection)
+    const lastPongRef = useRef<Record<string, number>>({})
 
     useEffect(() => {
         playerRef.current = player;
@@ -70,9 +72,18 @@ export function useP2P() {
 
 
     const createConnection = useCallback((targetPeer: string, onOpen: VoidWithArg<DataConnection>, onClose: VoidWithArg<string> = () => { }) => {
-        if (peersRef.current[targetPeer] !== undefined) return;
         const currentPeer = playerRef.current?.peer;
-        if (!currentPeer || peersRef.current[targetPeer] !== undefined) return;
+        if (!currentPeer) return;
+
+        // Reuse an existing connection (e.g. an inbound one we already
+        // registered) instead of opening a duplicate data channel.
+        const existing = peersRef.current[targetPeer];
+        if (existing) {
+            if (existing.conn?.open) onOpen(existing.conn)
+            existing.conn?.on('close', () => onClose(targetPeer))
+            return
+        }
+
         console.warn("creating connection with", targetPeer);
         let conn = currentPeer.connect(targetPeer);
         const onCloseInner = (pid: string) => {
@@ -93,6 +104,16 @@ export function useP2P() {
     }, []);
 
     const handleMessage = useCallback((msg: P2PMessage, from: string) => {
+        // Liveness heartbeat messages are handled here and never surface as
+        // game messages (keeps App from re-rendering on every ping).
+        if (msg.type === 'ping') {
+            peersRef.current[from]?.conn?.send({ type: 'pong' })
+            return
+        }
+        if (msg.type === 'pong') {
+            lastPongRef.current[from] = Date.now()
+            return
+        }
         setP2pMessages(prev => [...prev, [msg, from]])
     }, [])
 
@@ -123,7 +144,21 @@ export function useP2P() {
             setStatus('initialized')
         });
         peer.on('connection', (conn: DataConnection) => {
-            setupConnection(conn, handleMessage, () => { })
+            setupConnection(conn, handleMessage, () => { }, (pid: string) => {
+                setPeers(prev => {
+                    const { [pid]: removed, ...rest } = prev
+                    return rest
+                })
+            })
+            // Register inbound connections so later outbound attempts (from
+            // join-handshake or peer-list processing) reuse them instead of
+            // opening duplicate data channels to the same peer.
+            if (!peersRef.current[conn.peer]) {
+                setPeers(prev => {
+                    if (prev[conn.peer]) return prev
+                    return { ...prev, [conn.peer]: { id: conn.peer, conn, myEventsConsumed: 0, receivedEvents: new Set() } }
+                })
+            }
         })
     }, [isInitialized])
 
@@ -155,12 +190,16 @@ export function useP2P() {
 
     // Broadcast game events created by this node based on peer
     const broadcastGameEvents = useCallback((immediateEvents?: GameEvent[]) => {
-        let newPeers: Record<string, PeerInfo> = {};
+        let newConsumed: Record<string, number> = {};
 
         Object.entries(peers).forEach(async ([peerId, peerinfo]) => {
             let start = peerinfo.myEventsConsumed;
-            // Get my events from last consumed index
-            const toSendEvents = immediateEvents || myGameEvents.slice(start)
+            // Send any unsent backlog PLUS the immediate events so no event is
+            // ever skipped for a peer that fell behind.
+            const toSendEvents = [
+                ...myGameEvents.slice(start),
+                ...(immediateEvents ?? []).filter(ev => !myGameEvents.some(e => e.id === ev.id))
+            ]
             let ok = false;
             if (toSendEvents.length > 0) {
                 console.warn("sending game events to", peerId)
@@ -169,20 +208,33 @@ export function useP2P() {
             }
             // update consumed events count only if send succeeded
             if (ok) {
-                let newPeerInfo: PeerInfo = {
-                    ...peerinfo,
-                    myEventsConsumed: peerinfo.myEventsConsumed + toSendEvents.length
-                };
-                newPeers[peerId] = newPeerInfo
+                newConsumed[peerId] = start + toSendEvents.length
             }
         })
-        setPeers(prev => ({ ...prev, ...newPeers }))
+
+        // Functional update so concurrently-updated fields (e.g. receivedEvents)
+        // are preserved instead of being clobbered by a stale peer snapshot.
+        setPeers(prev => {
+            const updated: Record<string, PeerInfo> = {};
+            Object.entries(newConsumed).forEach(([pid, count]) => {
+                const info = prev[pid];
+                if (info) updated[pid] = { ...info, myEventsConsumed: count };
+            });
+            return { ...prev, ...updated };
+        })
     }, [peers, myGameEvents])
 
     // Relay events received from other peers
     const relayGameEvents = useCallback((evs: GameEvent[]) => {
         Object.entries(peers).forEach(async ([peerId, _]) => {
-            const filtered_evs = evs.filter(ev => !ev.id.includes(peerId));
+            // Exclude events that originated from the target peer. Event ids are
+            // "{originPeerId}-{seq}", so compare the extracted origin rather than
+            // using a substring match (peer ids can be prefixes of one another,
+            // e.g. the host id is a prefix of every joiner id).
+            const filtered_evs = evs.filter(ev => {
+                const sep = ev.id.lastIndexOf('-')
+                return sep === -1 || ev.id.slice(0, sep) !== peerId
+            });
             let ok = false;
             if (filtered_evs.length > 0) {
                 console.warn("relaying game events to", peerId)
@@ -193,8 +245,11 @@ export function useP2P() {
     }, [sendGameEvents])
 
     const createMessageEvent = useCallback((content: string) => {
-        let len = eventCounterRef.current || 0
-        let msgId = `${player?.id}-msg-${len}`
+        // Use the same "{peerId}-{seq}" scheme as game events so vector-clock
+        // parsing and sync logic treat messages uniformly (the old
+        // "{peerId}-msg-{seq}" format produced phantom vector-clock entries).
+        const len = eventCounterRef.current
+        const msgId = `${player?.id}-${len}`
         let message: Message = {
             id: msgId,
             content,
@@ -202,7 +257,7 @@ export function useP2P() {
             timestamp: new Date().getTime()
         }
         return createGameEvent('send-message', message)
-    }, [player, myGameEvents, createGameEvent])
+    }, [player, createGameEvent])
 
     const me: Player | undefined = player
         ? {
@@ -251,6 +306,20 @@ export function useP2P() {
                     peers[toPeerId].conn.send(response)
                     console.log(`Sent ${events.length} missing events to ${toPeerId}`)
                 }
+            },
+            pingAll: () => {
+                Object.values(peers).forEach(peerInfo => {
+                    if (peerInfo.conn && peerInfo.conn.open) {
+                        peerInfo.conn.send({ type: 'ping' })
+                    }
+                })
+            },
+            getInactivePeers: (timeoutMs: number) => {
+                const now = Date.now()
+                return Object.keys(peers).filter(pid => {
+                    const lastPong = lastPongRef.current[pid]
+                    return lastPong !== undefined && now - lastPong > timeoutMs
+                })
             },
             clearP2pMessages: () => setP2pMessages([]),
             setReceivedEventsFrom: (evs: GameEvent[], from: string) => {
